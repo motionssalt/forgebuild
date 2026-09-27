@@ -3,7 +3,7 @@
   "project": "forgebuild-taskflow",
   "app_name": "TaskFlow",
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
-  "build_complete": false,
+  "build_complete": true,
   "updated_by": "taskflow-pass8-session",
   "current_task": "step-58",
   "substitutions": [],
@@ -353,8 +353,8 @@
     {
       "id": "step-58",
       "title": "Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v8, verify release + assets live via GitHub Releases API, and set build_complete: true",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "release.yml dispatched (app_path=apps/taskflow); run 36326585572 completed success. Verified live via GitHub Releases API: tag taskflow-v8 (not draft/prerelease, published at 2026-09-27T14:40:05Z) with assets app-taskflow-v8.apk (2,257,773 bytes, R8-minified, repo-keystore signed) + forgebuild-manifest.json (790 bytes). Prior releases taskflow-v1..v7 untouched. All Pass 8 requirements implemented and verified: visible completion animation with confirmation card and tick transition; background AI reliability via application-scoped singleton AgentOrchestrator and CPU WakeLock; disk crash logging with crash diagnostics UI and foreground service hardening; proactive task info capture and parent task title/ID resolution for nested sub-tasks; plain/normal tasks schedulable for future dates and date-filtering fix preventing future tasks from leaking into today; Gemini client retry and exponential backoff on high-usage errors."
     }
   ]
 }
