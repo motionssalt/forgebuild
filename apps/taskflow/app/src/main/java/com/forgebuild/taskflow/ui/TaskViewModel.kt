@@ -195,6 +195,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         title: String,
         durationMinutes: Long = 30L,
         fixedTime: Long? = null,
+        scheduledDate: Long? = null,
         recurrence: Recurrence = Recurrence.NONE,
         weekdaysMask: Int = 0,
         info: String = "",
@@ -208,10 +209,17 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         val effectiveParent = parentId ?: _path.value.lastOrNull()
         val dur = durationMinutes.coerceAtLeast(1L)
         val now = System.currentTimeMillis()
-        val proposed = Task(title = "", rank = 0.0, durationMinutes = dur, fixedTime = fixedTime)
-        val todaySegment = if (fixedTime == null) dur else DayAccounting.minutesOnDay(proposed, now, now)
-        val isToday = fixedTime == null || todaySegment > 0L
-
+        val proposed = Task(
+            title = "",
+            rank = 0.0,
+            durationMinutes = dur,
+            fixedTime = fixedTime,
+            scheduledDate = scheduledDate
+        )
+        val todayStart = DayAccounting.dayStart(now)
+        val isFutureDay = scheduledDate != null && scheduledDate > todayStart
+        val todaySegment = if (isFutureDay) 0L else if (fixedTime == null) dur else DayAccounting.minutesOnDay(proposed, now, now)
+        val isToday = !isFutureDay && (fixedTime == null || todaySegment > 0L)
         if (isToday) {
             val remaining = repo.getRemainingMinutesToday()
             if (todaySegment > remaining) {
@@ -219,33 +227,30 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
         }
-
         // Overnight rule: a task may only span past midnight when it has a fixed time
         // (with duration). An untimed task is confined to a single day by construction
         // (its whole duration is charged to today and blocked above when it overflows).
-        if (fixedTime == null && dur > repo.getRemainingMinutesToday()) {
+        if (!isFutureDay && fixedTime == null && dur > repo.getRemainingMinutesToday()) {
             _userMessage.emit("Cannot add \"$title\": tasks without a fixed time cannot run overnight — ${dur}m does not fit in today.")
             return@launch
         }
-
         // Parent/child constraint: cumulative direct sub-task durations ≤ parent duration.
         repo.childDurationError(effectiveParent, dur)?.let {
             _userMessage.emit(it)
             return@launch
         }
-
         repo.create(
             title = title.trim(),
             parentId = effectiveParent,
             durationMinutes = dur,
             fixedTime = fixedTime,
+            scheduledDate = scheduledDate,
             recurrence = recurrence,
             weekdaysMask = weekdaysMask,
             info = info.trim(),
             recurrenceEndDate = if (recurrence != Recurrence.NONE) recurrenceEndDate else null
         )
     }
-
     fun toggleComplete(task: Task) = viewModelScope.launch { repo.setCompleted(task.id, !task.completed) }
 
     // ---- Countdown timer controls (play / pause / extend / complete) ----
@@ -278,8 +283,10 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         val now = System.currentTimeMillis()
         val dur = task.durationMinutes.coerceAtLeast(1L)
         // Overnight-aware: only the portion of the task landing on today counts against today.
-        val todaySegment = if (task.fixedTime == null) dur else DayAccounting.minutesOnDay(task, now, now)
-        val isToday = task.fixedTime == null || todaySegment > 0L
+        val todayStart = DayAccounting.dayStart(now)
+        val isFutureDay = task.scheduledDate != null && task.scheduledDate > todayStart
+        val todaySegment = if (isFutureDay) 0L else if (task.fixedTime == null) dur else DayAccounting.minutesOnDay(task, now, now)
+        val isToday = !isFutureDay && (task.fixedTime == null || todaySegment > 0L)
 
         if (isToday) {
             val remainingWithOld = repo.getRemainingMinutesToday(excludeTaskId = task.id)
@@ -290,14 +297,10 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         // Overnight rule: without a fixed time a task must never span into the next day.
-        if (task.fixedTime == null && dur > repo.getRemainingMinutesToday(excludeTaskId = task.id)) {
+        if (!isFutureDay && task.fixedTime == null && dur > repo.getRemainingMinutesToday(excludeTaskId = task.id)) {
             onResult(false, "Tasks without a fixed time cannot run overnight — ${dur}m does not fit in today.")
             return@launch
         }
-
-        // Parent/child constraints, both directions: as a child it may not push its
-        // siblings' cumulative duration over the parent; as a parent it may not shrink
-        // below the sum of its own children's durations.
         repo.childDurationError(task.parentId, dur, excludeChildId = task.id)?.let {
             onResult(false, it)
             return@launch
