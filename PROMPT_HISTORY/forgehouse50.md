@@ -241,3 +241,31 @@ correction session. Refinement, not a full correction.
   extract the mark silhouette, add a real <monochrome> layer (not empty/opaque)
   to the adaptive icon XML, sized in the safe zone; leave working foreground/
   background layers untouched; verify with themed icons ON and OFF.
+---
+
+## 2026-09-27 — EXTEND / UPDATE: ForgeHouse 50 Android App — WhatsApp/Support Links, Catch-Up Reading, Home-Screen Widget, Gated Completion, Icon Reapplication
+
+(Credential values redacted per contract; never committed.)
+
+- ISSUE 1 — Add a distinct "Join ForgeHouse WhatsApp Group" action (opens
+  https://chat.whatsapp.com/KNt6BxuzOWwFZ9p4LL2Dfq) AND a separate "Support
+  ForgeHouse Global" action (opens a direct WhatsApp chat to the admin via
+  https://wa.me/2349139095481). Never merge the two.
+- ISSUE 2 — Catch-up reading: at most 2 days' reading per session, oldest
+  outstanding days first, until caught up; no hard cap on missed days; the only
+  limit is arithmetic (outstanding > remaining calendar reading days) shown as
+  an honest Progress-screen status, never a lockout. Interacts with the existing
+  1-day read-ahead: catch-up pacing takes precedence while a backlog exists.
+  Each catch-up day keeps its own reading content and its own quiz.
+- ISSUE 3 — Real Android home-screen App Widget (Jetpack Glance preferred):
+  Day x/50, current assignment book+chapters, a key verse (first verse of the
+  range as the default), X/260 progress, state-based primary action
+  Start/Continue/Completed(+Reflect) deep-linking into the app, periodic
+  refresh via WorkManager. Optional: participants-completed-today count only if
+  a backend endpoint already exists (otherwise document as skipped).
+- ISSUE 4 — Gate the Finish Reading / mark-complete action until every chapter
+  of that day has actually been viewed (per-day inside catch-up sessions);
+  visibly disabled with a "viewed k of N chapters" indicator, not hidden.
+- ISSUE 5 — Reapply the app icon from the operator-supplied source image:
+  full adaptive set (background, foreground, monochrome themed layer per the
+  established pattern) plus legacy fallback; verify themed icons on and off.
