@@ -177,6 +177,10 @@ fun TaskRowItem(
         label = "rowContainer"
     )
 
+    val dateOnlyFmt = remember { SimpleDateFormat("EEE, MMM d", Locale.getDefault()) }
+    val isFutureDate = task.scheduledDate != null &&
+        DayAccounting.dayStart(task.scheduledDate) != DayAccounting.dayStart(nowTick)
+
     val badgeText = when (task.taskType) {
         TaskType.RECURRING_FIXED -> {
             val base = "Recurring · ${task.recurrence.name.lowercase().replaceFirstChar { it.uppercase() }}"
@@ -187,12 +191,12 @@ fun TaskRowItem(
             "Recurring · ${task.recurrence.name.lowercase().replaceFirstChar { it.uppercase() }}"
         TaskType.FIXED_TIME ->
             task.fixedTime?.let { dateFmt.format(Date(it)) + (overnightLabel?.let { o -> " → $o" } ?: "") } ?: "Scheduled"
-        TaskType.NORMAL -> ""
+        TaskType.NORMAL -> if (isFutureDate) dateOnlyFmt.format(Date(task.scheduledDate!!)) else ""
     }
     val badgeIcon = when (task.taskType) {
         TaskType.RECURRING_FIXED, TaskType.RECURRING_NO_TIME -> EngineIcons.Repeat
         TaskType.FIXED_TIME -> EngineIcons.Alarm
-        TaskType.NORMAL -> null
+        TaskType.NORMAL -> if (isFutureDate) EngineIcons.CalendarToday else null
     }
 
     Surface(

@@ -9,14 +9,13 @@ import java.util.Calendar
  * category behaves consistently:
  *
  *  - one-off fixed-time tasks
+ *  - normal (no-fixed-time) tasks scheduled for today or a specific future date
  *  - recurring templates occurring that day
  *  - generated recurring instances
- *  - carried-over tasks (still active with a stale fixedTime)
- *  - untimed tasks (count fully against "today")
+ *  - carried-over tasks (still active with a stale date/time)
  *  - overnight tasks whose span crosses midnight (split into two day segments)
  */
 object DayAccounting {
-
     const val DAY_MILLIS: Long = 86_400_000L
 
     fun dayStart(millis: Long): Long {
@@ -41,7 +40,7 @@ object DayAccounting {
         // Respect recurrence expiration: no occurrences after the end date.
         template.recurrenceEndDate?.let { if (start > it) return false }
         // Respect first occurrence: the series cannot occur before the anchor's day.
-        val anchor = template.fixedTime ?: template.createdAt
+        val anchor = template.fixedTime ?: template.scheduledDate ?: template.createdAt
         if (start < dayStart(anchor)) return false
         val day = Calendar.getInstance().apply { timeInMillis = start }
         val base = Calendar.getInstance().apply { timeInMillis = anchor }
@@ -85,7 +84,7 @@ object DayAccounting {
     fun segmentsOnDay(task: Task, dayMillis: Long, nowMillis: Long): List<Segment> {
         val start = dayStart(dayMillis)
         val end = start + DAY_MILLIS
-        val spanStart = effectiveSpanStart(task, dayMillis) ?: return emptyList()
+        val spanStart = effectiveSpanStart(task, dayMillis, nowMillis) ?: return emptyList()
         val spanEnd = spanStart + task.durationMinutes.coerceAtLeast(1L) * 60_000L
         val s = maxOf(spanStart, start)
         val e = minOf(spanEnd, end)
@@ -98,13 +97,13 @@ object DayAccounting {
      *
      * Rules:
      *  - Timed task whose span overlaps the day -> its fixedTime (or template occurrence).
-     *  - Timed task still active but scheduled in the past (carried over / unfinished
-     *    but not yet swept) -> counts fully against "today" from now on: we anchor it
-     *    at the start of the queried day so its whole duration lands on that day.
-     *  - Untimed task -> occupies the queried day (full duration) whenever that day is
-     *    today or in the future and the task is still active.
+     *  - Timed task scheduled before this day -> carries over to "today" ONLY when queried day is today.
+     *  - Untimed task with scheduledDate -> occupies that specific scheduled calendar day.
+     *  - Untimed task without scheduledDate -> defaults to the day it was created (createdAt).
+     *  - Untimed task scheduled in the future -> NEVER touches today or earlier days.
+     *  - Untimed task scheduled in the past -> carries over to "today" ONLY when queried day is today.
      */
-    private fun effectiveSpanStart(task: Task, dayMillis: Long): Long? {
+    private fun effectiveSpanStart(task: Task, dayMillis: Long, nowMillis: Long): Long? {
         val start = dayStart(dayMillis)
         if (task.isRecurringTemplate) {
             return occurrenceOnDay(task, dayMillis)
@@ -115,15 +114,20 @@ object DayAccounting {
             val end = start + DAY_MILLIS
             // Overlaps this day naturally (incl. overnight spill from previous day)?
             if (ft < end && spanEnd > start) return ft
-            // Carried over: scheduled before this day, still active and not swept -> counts today.
-            if (ft < start && !task.completed && !task.missed) return start
+            // Carried over: scheduled before this day, still active and not swept -> counts today ONLY if queried day is today.
+            if (ft < start && !task.completed && !task.missed && start == dayStart(nowMillis)) return start
             return null
         }
-        // Untimed task: counts against the day it is active for. Created after this
-        // day => does not belong to it; otherwise any active untimed task is today's work.
+        // Untimed normal task:
         if (task.completed || task.missed) return null
-        if (task.createdAt >= start + DAY_MILLIS) return null
-        return start
+        val targetDay = task.scheduledDate ?: dayStart(task.createdAt)
+        // If scheduled for a future day relative to this queried day, it does NOT belong to this day.
+        if (targetDay > start) return null
+        // Belongs directly to this day.
+        if (targetDay == start) return start
+        // Carried over from an earlier day -> only active if queried day is today.
+        if (targetDay < start && start == dayStart(nowMillis)) return start
+        return null
     }
 
     /** The absolute span of this task's occupancy: [start, start+duration) or null if unschedulable. */
@@ -153,9 +157,7 @@ object DayAccounting {
     }
 
     /**
-     * True when a task's occupancy touches the calendar day containing
-     * [dayMillis] (used by the day filter of the TODAY view so overnight
-     * spill-over segments show up on the correct day).
+     * True when a task's occupancy touches the calendar day containing [dayMillis].
      */
     fun touchesDay(task: Task, dayMillis: Long, nowMillis: Long): Boolean =
         segmentsOnDay(task, dayMillis, nowMillis).isNotEmpty()

@@ -87,6 +87,7 @@ fun TaskEditScreen(
     var title by remember(current.id) { mutableStateOf(current.title) }
     var durationMinutes by remember(current.id) { mutableLongStateOf(current.durationMinutes) }
     var info by remember(current.id) { mutableStateOf(current.info) }
+    var scheduledDate by remember(current.id) { mutableStateOf(current.scheduledDate) }
     var fixedTime by remember(current.id) { mutableStateOf(current.fixedTime) }
     var recurrence by remember(current.id) { mutableStateOf(current.recurrence) }
     var weekdaysMask by remember(current.id) { mutableIntStateOf(current.weekdaysMask) }
@@ -100,6 +101,8 @@ fun TaskEditScreen(
 
     val fmt = remember { SimpleDateFormat("EEE, MMM d yyyy · HH:mm", Locale.getDefault()) }
     val dateFmt = remember { SimpleDateFormat("MMM d yyyy", Locale.getDefault()) }
+    val dateOnlyFmt = remember { SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()) }
+    val timeOnlyFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
     Scaffold(
         topBar = {

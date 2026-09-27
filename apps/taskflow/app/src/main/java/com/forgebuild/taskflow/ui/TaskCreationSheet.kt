@@ -68,6 +68,7 @@ fun TaskCreationSheet(
     var title by remember { mutableStateOf("") }
     var durationMinutes by remember { mutableLongStateOf(30L) }
     var info by remember { mutableStateOf("") }
+    var scheduledDate by remember { mutableStateOf<Long?>(null) }
     var fixedTime by remember { mutableStateOf<Long?>(null) }
     var recurrence by remember { mutableStateOf(Recurrence.NONE) }
     var weekdaysMask by remember { mutableIntStateOf(0) }
@@ -76,6 +77,8 @@ fun TaskCreationSheet(
 
     val fmt = remember { SimpleDateFormat("EEE, MMM d yyyy · HH:mm", Locale.getDefault()) }
     val dateFmt = remember { SimpleDateFormat("MMM d yyyy", Locale.getDefault()) }
+    val dateOnlyFmt = remember { SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault()) }
+    val timeOnlyFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
     val previewType = when {
         recurrence != Recurrence.NONE && fixedTime != null -> TaskType.RECURRING_FIXED
@@ -161,8 +164,52 @@ fun TaskCreationSheet(
                 }
             }
 
-            // Fixed time (optional)
-            Text("Scheduled time (optional)", style = MaterialTheme.typography.titleSmall)
+            // Scheduled date (optional, defaults to Today)
+            Text("Scheduled date", style = MaterialTheme.typography.titleSmall)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(onClick = {
+                    val cal = Calendar.getInstance()
+                    val target = scheduledDate ?: fixedTime
+                    if (target != null) cal.timeInMillis = target
+                    DatePickerDialog(context, { _, y, m, d ->
+                        val c = Calendar.getInstance()
+                        c.set(y, m, d, 0, 0, 0)
+                        c.set(Calendar.MILLISECOND, 0)
+                        val pickedDay = c.timeInMillis
+                        val todayStart = com.forgebuild.taskflow.data.DayAccounting.dayStart(System.currentTimeMillis())
+                        scheduledDate = if (pickedDay == todayStart) null else pickedDay
+                        fixedTime?.let { ft ->
+                            val ftCal = Calendar.getInstance().apply { timeInMillis = ft }
+                            c.set(Calendar.HOUR_OF_DAY, ftCal.get(Calendar.HOUR_OF_DAY))
+                            c.set(Calendar.MINUTE, ftCal.get(Calendar.MINUTE))
+                            fixedTime = c.timeInMillis
+                        }
+                    }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+                }) {
+                    Icon(EngineIcons.CalendarToday, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text(if (scheduledDate == null) "Today" else dateOnlyFmt.format(Date(scheduledDate!!)))
+                }
+                if (scheduledDate != null) {
+                    OutlinedButton(onClick = {
+                        scheduledDate = null
+                        fixedTime?.let { ft ->
+                            val ftCal = Calendar.getInstance().apply { timeInMillis = ft }
+                            val c = Calendar.getInstance()
+                            c.set(Calendar.HOUR_OF_DAY, ftCal.get(Calendar.HOUR_OF_DAY))
+                            c.set(Calendar.MINUTE, ftCal.get(Calendar.MINUTE))
+                            c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0)
+                            fixedTime = c.timeInMillis
+                        }
+                    }) { Text("Today") }
+                }
+            }
+
+            // Fixed clock time (optional)
+            Text("Fixed clock time (optional)", style = MaterialTheme.typography.titleSmall)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs),
                 verticalAlignment = Alignment.CenterVertically
@@ -170,21 +217,22 @@ fun TaskCreationSheet(
                 OutlinedButton(onClick = {
                     val cal = Calendar.getInstance()
                     fixedTime?.let { cal.timeInMillis = it }
-                    DatePickerDialog(context, { _, y, m, d ->
-                        TimePickerDialog(context, { _, h, min ->
-                            val c = Calendar.getInstance()
-                            c.set(y, m, d, h, min, 0)
-                            c.set(Calendar.MILLISECOND, 0)
-                            fixedTime = c.timeInMillis
-                        }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
-                    }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+                    TimePickerDialog(context, { _, h, min ->
+                        val baseDay = scheduledDate ?: com.forgebuild.taskflow.data.DayAccounting.dayStart(System.currentTimeMillis())
+                        val c = Calendar.getInstance().apply { timeInMillis = baseDay }
+                        c.set(Calendar.HOUR_OF_DAY, h)
+                        c.set(Calendar.MINUTE, min)
+                        c.set(Calendar.SECOND, 0)
+                        c.set(Calendar.MILLISECOND, 0)
+                        fixedTime = c.timeInMillis
+                    }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
                 }) {
                     Icon(EngineIcons.Alarm, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(6.dp))
-                    Text(if (fixedTime == null) "Set time" else fmt.format(Date(fixedTime!!)))
+                    Text(if (fixedTime == null) "No fixed time (normal task)" else timeOnlyFmt.format(Date(fixedTime!!)))
                 }
                 if (fixedTime != null) {
-                    OutlinedButton(onClick = { fixedTime = null }) { Text("Clear") }
+                    OutlinedButton(onClick = { fixedTime = null }) { Text("Clear time") }
                 }
             }
 
@@ -289,6 +337,7 @@ fun TaskCreationSheet(
                         title = title.trim(),
                         durationMinutes = durationMinutes.coerceAtLeast(1L),
                         fixedTime = fixedTime,
+                        scheduledDate = scheduledDate,
                         recurrence = recurrence,
                         weekdaysMask = weekdaysMask,
                         info = info.trim(),

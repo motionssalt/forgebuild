@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass8-session",
-  "current_task": "step-56",
+  "current_task": "step-57",
   "substitutions": [],
   "tasks": [
     {
@@ -341,8 +341,8 @@
     {
       "id": "step-56",
       "title": "Normal (No-Fixed-Time) Future Tasks & Date Filtering Fix: add scheduledDate to Task entity, separate Date and Time in creation/edit UI, and fix day/week/month/year filtering so future tasks never appear in today",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "FIXED Normal (No-Fixed-Time) Future Tasks & Date Filtering Bug: (1) Added scheduledDate to Task entity and bumped Room DB to v6; (2) Separated Date and Time selectors in TaskCreationSheet and TaskEditScreen so users can schedule plain tasks for any date (tomorrow, next Friday, next month) without setting a fixed clock time; (3) Updated DayAccounting and TaskViewModel date filtering so untimed future tasks (targetDay > todayStart) and future fixed-time tasks never leak into the TODAY view; (4) Used proper Calendar.add(DAY_OF_MONTH, 1) day stepping across week/month/year ranges; (5) Surfaced scheduled date badges on task rows for future untimed tasks."
     },
     {
       "id": "step-57",
