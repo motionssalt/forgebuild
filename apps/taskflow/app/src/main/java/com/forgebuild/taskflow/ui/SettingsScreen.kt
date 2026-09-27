@@ -7,6 +7,10 @@
 package com.forgebuild.taskflow.ui
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -574,9 +578,35 @@ fun SettingsScreen(
                     Text("Crash Diagnostics")
                 }
                 if (showCrashLogDialog) {
+                    var copied by remember { mutableStateOf(false) }
                     AlertDialog(
                         onDismissRequest = { showCrashLogDialog = false },
-                        title = { Text("Crash Diagnostics") },
+                        title = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Crash Diagnostics")
+                                TextButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("Crash Logs", crashLogText)
+                                        clipboard.setPrimaryClip(clip)
+                                        copied = true
+                                        Toast.makeText(context, "Crash log copied to clipboard", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    if (copied) {
+                                        Icon(EngineIcons.Check, null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Copied")
+                                    } else {
+                                        Text("Copy")
+                                    }
+                                }
+                            }
+                        },
                         text = {
                             Column(
                                 modifier = Modifier
@@ -596,11 +626,27 @@ fun SettingsScreen(
                             }
                         },
                         dismissButton = {
-                            TextButton(onClick = {
-                                CrashLogger.clearCrashLogs(context)
-                                crashLogText = "No crashes recorded."
-                            }) {
-                                Text("Clear Log")
+                            Row(horizontalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)) {
+                                TextButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("Crash Logs", crashLogText)
+                                        clipboard.setPrimaryClip(clip)
+                                        copied = true
+                                        Toast.makeText(context, "Crash log copied to clipboard", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Text(if (copied) "Copied" else "Copy Log")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        CrashLogger.clearCrashLogs(context)
+                                        crashLogText = "No crashes recorded."
+                                        Toast.makeText(context, "Crash log cleared", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Text("Clear Log", color = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     )

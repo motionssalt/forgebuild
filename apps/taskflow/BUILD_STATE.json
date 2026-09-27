@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass9-session",
-  "current_task": "step-61",
+  "current_task": "step-62",
   "substitutions": [],
   "tasks": [
     {
@@ -371,8 +371,8 @@
     {
       "id": "step-61",
       "title": "Copy Crash Logs: add clipboard copy action with confirmation toast in Crash Diagnostics dialog",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Added clipboard copy action to Crash Diagnostics dialog in Settings > Reliability using Android ClipboardManager (ClipData.newPlainText). Surfaced 'Copy' action in the dialog title and a 'Copy Log' action in the dialog buttons with visual 'Copied' checkmark feedback and Toast confirmation, allowing users to copy crash logs for sharing and debugging."
     },
     {
       "id": "step-62",
