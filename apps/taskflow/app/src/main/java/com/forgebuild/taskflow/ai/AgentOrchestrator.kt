@@ -1,6 +1,12 @@
 package com.forgebuild.taskflow.ai
 
 import android.content.Context
+import android.os.PowerManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.forgebuild.taskflow.notify.NotificationHub
 import com.forgebuild.taskflow.settings.GeminiKeyStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,8 +27,29 @@ data class ChatMessage(val role: Role, val text: String) {
 }
 
 /** Runs the multi-turn Gemini function-calling loop and records the chat transcript. */
-class AgentOrchestrator(context: Context) {
+class AgentOrchestrator private constructor(context: Context) {
     private val appContext = context.applicationContext
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
+    private val wakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TaskFlow:AIRequest")
+
+    companion object {
+        @Volatile
+        private var instance: AgentOrchestrator? = null
+
+        fun get(context: Context): AgentOrchestrator =
+            instance ?: synchronized(this) {
+                instance ?: AgentOrchestrator(context.applicationContext).also { instance = it }
+            }
+    }
+
+    fun submit(userText: String): Job = appScope.launch {
+        send(userText)
+    }
+
+    fun submitAudio(mimeType: String, base64Audio: String): Job = appScope.launch {
+        sendAudio(mimeType, base64Audio)
+    }
     private val repo = com.forgebuild.taskflow.data.TaskRepository.get(context)
     private val client = GeminiClient(GeminiKeyStore.get(context))
     private val tools = TaskAgentTools(repo)
@@ -98,6 +125,7 @@ class AgentOrchestrator(context: Context) {
 
     private suspend fun runLoop(contents: MutableList<JsonObject>) {
         val actions = mutableListOf<String>()
+        runCatching { wakeLock?.acquire(180_000L) }
         try {
             val systemInstruction = buildSystemInstruction()
             var rounds = 0
@@ -152,6 +180,9 @@ class AgentOrchestrator(context: Context) {
                 "Error: ${e.message ?: "Could not complete request."}")
         } finally {
             _busy.value = false
+            runCatching {
+                if (wakeLock?.isHeld == true) wakeLock.release()
+            }
         }
     }
 }

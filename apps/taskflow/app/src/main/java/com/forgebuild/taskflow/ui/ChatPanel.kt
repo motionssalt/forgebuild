@@ -114,7 +114,7 @@ fun ChatPanel(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
-    val orchestrator = remember { AgentOrchestrator(context) }
+    val orchestrator = remember { AgentOrchestrator.get(context) }
     val messages by orchestrator.messages.collectAsState()
     val busy by orchestrator.busy.collectAsState()
     val scope = rememberCoroutineScope()
@@ -148,7 +148,7 @@ fun ChatPanel(
                 val base64 = withContext(Dispatchers.IO) {
                     Base64.encodeToString(f.readBytes(), Base64.NO_WRAP)
                 }
-                orchestrator.sendAudio("audio/mp4", base64)
+                orchestrator.submitAudio("audio/mp4", base64)
             } catch (_: Exception) {
             } finally {
                 voiceStage = VoiceStage.IDLE
@@ -395,7 +395,7 @@ fun ChatPanel(
                             val text = input.trim()
                             if (text.isNotEmpty() && !busy) {
                                 input = ""
-                                scope.launch { orchestrator.send(text) }
+                                orchestrator.submit(text)
                             }
                         }
                     )

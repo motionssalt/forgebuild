@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass8-session",
-  "current_task": "step-53",
+  "current_task": "step-54",
   "substitutions": [],
   "tasks": [
     {
@@ -323,8 +323,8 @@
     {
       "id": "step-53",
       "title": "Background Reliability for AI Requests: make AgentOrchestrator application-scoped singleton with Process/App CoroutineScope and WakeLock so in-flight requests complete when backgrounded",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "FIXED Background Reliability for In-Progress AI Requests: Converted AgentOrchestrator to an application-scoped singleton backed by an independent CoroutineScope(SupervisorJob() + Dispatchers.IO); protected request execution with a 3-minute CPU WakeLock (added android.permission.WAKE_LOCK); replaced composable-tied coroutine launches in ChatPanel with orchestrator.submit() and orchestrator.submitAudio(). When the user minimizes or backgrounds the app or closes the chat sheet mid-request, execution continues uninterrupted to completion in the background and posts a notification summary upon finish."
     },
     {
       "id": "step-54",
