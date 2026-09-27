@@ -313,3 +313,22 @@ This is a follow-up pass on the existing app (previous revisions already impleme
 ## Date Filter/View Bug — Task Appearing Under Wrong Date Range (FIX — verify and fix)
 - A task created for next month was observed appearing in the "today" view, despite its stored date clearly being next month.
 - Confirm whether the day/week/month/year filtering logic is actually broken (this sounds like a genuine bug, not user error) and fix it so tasks only appear under the date range(s) they actually belong to.
+
+
+---
+
+# TaskFlow — Revision Pass 9 (Fixes) — 2026-09-27
+
+This is a follow-up pass on the existing app (previous revisions already implemented). These are new fixes/requirements only. Verify each fix actually works after implementing, not just that it compiles/appears to work.
+
+## Ability to Clear AI Chat Message History (NEW)
+- Add a way to clear the AI chat/message history (e.g. from Settings), so the conversation log doesn't grow indefinitely.
+
+## Crash Logs Cannot Be Copied (FIX)
+- The crash diagnostic feature added previously does record crashes correctly, but there's no way to actually copy the crash log text out of the app (e.g. to share for debugging).
+- Add a copy button/action to the crash log view so the user can copy the log content.
+
+## AI Cannot Create Tasks for Future Dates — Wrongly Applies Today's Time Budget (FIX — critical)
+- When asked to create a task for a future date (e.g. "next week"), the AI is incorrectly trying to fit it against today's remaining time budget instead of the target date's, and struggles/fails as a result.
+- Fix so the AI correctly creates tasks for any date the user specifies, checking time availability against that task's actual target date, not always today.
+- More broadly: the AI must be able to create and manage every type of task the app supports (fixed-time, non-fixed-time, recurring with/without expiration, sub-tasks at any depth, overnight/cross-midnight tasks, tasks for any future date, etc.) — the AI's capabilities must not be more limited than what the user can do manually in the UI. Audit the AI's tool/function set against the full feature list and close any gaps.
