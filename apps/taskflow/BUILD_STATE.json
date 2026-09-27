@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass8-session",
-  "current_task": "step-54",
+  "current_task": "step-55",
   "substitutions": [],
   "tasks": [
     {
@@ -329,8 +329,8 @@
     {
       "id": "step-54",
       "title": "AI High-Usage Handling: implement retry with exponential backoff on 429/503/RESOURCE_EXHAUSTED errors in GeminiClient, distinguishing temporary load from invalid keys",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "FIXED AI High-Usage Handling: Updated GeminiClient to classify responses (HTTP 429, 503, 500, 502, 504 and RESOURCE_EXHAUSTED / rate limit / unavailable error payloads) as temporary high load rather than invalid keys; implemented exponential backoff retries with jitter and Retry-After header parsing (up to 4 attempts); introduced HighUsageExhaustedException and InvalidApiKeyException. In AgentOrchestrator, high-load errors surface a distinct high-usage message without false apiKeysFailed notifications or key invalidation alerts."
     },
     {
       "id": "step-55",

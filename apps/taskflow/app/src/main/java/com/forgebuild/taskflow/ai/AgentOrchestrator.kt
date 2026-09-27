@@ -171,10 +171,18 @@ class AgentOrchestrator private constructor(context: Context) {
         } catch (e: GeminiClient.NoKeysException) {
             _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
                 "No Gemini API key configured. Open Settings to add your key.")
+        } catch (e: GeminiClient.HighUsageExhaustedException) {
+            // Distinct message for high load without false API key error notification
+            _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
+                "Gemini servers are experiencing temporary high usage right now. The request was retried with backoff. Please try again in a few moments.")
+        } catch (e: GeminiClient.InvalidApiKeyException) {
+            NotificationHub.apiKeysFailed(appContext)
+            _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
+                "Configured Gemini API key is invalid or rejected. Check Settings.")
         } catch (e: GeminiClient.AllKeysFailedException) {
             NotificationHub.apiKeysFailed(appContext)
             _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
-                "All configured Gemini API keys failed (quota/invalid). Check Settings.")
+                "Configured Gemini API keys failed. Check Settings.")
         } catch (e: Exception) {
             _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
                 "Error: ${e.message ?: "Could not complete request."}")
