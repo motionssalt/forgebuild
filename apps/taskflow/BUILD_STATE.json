@@ -3,9 +3,9 @@
   "project": "forgebuild-taskflow",
   "app_name": "TaskFlow",
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
-  "build_complete": true,
-  "updated_by": "taskflow-pass7-session",
-  "current_task": "complete",
+  "build_complete": false,
+  "updated_by": "taskflow-pass8-session",
+  "current_task": "step-52",
   "substitutions": [],
   "tasks": [
     {
@@ -36,7 +36,7 @@
       "id": "step-5",
       "title": "Implement app per APP_DESCRIPTION, one feature per commit/push",
       "status": "done",
-      "notes": "Implemented per APP_DESCRIPTION: Room Task model (fractional rank, fixed time, recurrence none/daily/weekly(monthly,yearly incl. weekday mask), info, nullable parent for unlimited nesting, completion, timestamps); PriorityRank fractional/lexo insertion + background rebalance; Repository as single op entry point; RecurrenceEngine regenerates instances on completion/rollover; ReminderScheduler (exact AlarmManager alarms) + ReminderReceiver (due-now pin+notify, deadline lead, daily agenda, rollover) + DueForegroundService (persistent low-priority notification with plain-language explanation) + BootReceiver (re-arm after reboot); NotificationHub with 5 channels and 7 per-type toggles (defaults per spec); AppSettings via DataStore (toggles, theme, lead time, onboarding, agenda hour); GeminiKeyStore via EncryptedSharedPreferences (keys local-only, failover order editable); GeminiClient (gemini-flash-lite-latest, generateContent w/ function calling, key failover); TaskAgentTools (7 function schemas mirroring all task ops incl. insert-between reorder, reparent, vague-input parsing) + AgentOrchestrator (multi-turn function-calling loop, open-ended instruction system prompt, in-chat confirmations + system notification, all-keys-failed alert); UI: TaskListScreen (priority-sorted, due-now error-container highlight + DUE NOW label, drag-reorder via long-press handle, quick-add, recursive breadcrumb navigation, eye-icon info quick-peek bottom sheet), TaskEditScreen (all fields incl. weekday chips), ChatPanel (mic FAB bottom sheet, SpeechRecognizer voice-to-text, conversation history), SettingsScreen (key mgmt, per-type notification toggles, lead-time slider, exact-alarm/battery-exemption setup, theme), OnboardingScreen (plain-language permission flow). All UI under ForgeBuildTheme with MaterialTheme tokens + EngineIcons only, zero hardcoded colors. Deps justified: Room/KSP (persistence), DataStore (settings), ktor-client-okhttp (Gemini HTTPS), security-crypto (key storage), serialization (payloads), lifecycle-viewmodel-compose (screen state) — versions mirrored from sibling forgehouse50 proven on the same toolchain."
+      "notes": "Implemented per APP_DESCRIPTION: Room Task model (fractional rank, fixed time, recurrence none/daily/weekly(monthly,yearly incl. weekday mask), info, nullable parent for unlimited nesting, completion, timestamps); PriorityRank fractional/lexo insertion + background rebalance; Repository as single op entry point; RecurrenceEngine regenerates instances on completion/rollover; ReminderScheduler (exact AlarmManager alarms) + ReminderReceiver (due-now pin+notify, deadline lead, daily agenda, rollover) + DueForegroundService (persistent low-priority notification with plain-language explanation) + BootReceiver (re-arm after reboot); NotificationHub with 5 channels and 7 per-type toggles (defaults per spec); AppSettings via DataStore (toggles, theme, lead time, onboarding, agenda hour); GeminiKeyStore via EncryptedSharedPreferences (keys local-only, failover order editable); GeminiClient (gemini-flash-lite-latest, generateContent w/ function calling, key failover); TaskAgentTools (7 function schemas mirroring all task ops incl. insert-between reorder, reparent, vague-input parsing) + AgentOrchestrator (multi-turn function-calling loop, open-ended instruction system prompt, in-chat confirmations + system notification, all-keys-failed alert); UI: TaskListScreen (priority-sorted, due-now error-container highlight + DUE NOW label, drag-reorder via long-press handle, quick-add, recursive breadcrumb navigation, eye-icon info quick-peek bottom sheet), TaskEditScreen (all fields incl. weekday chips), ChatPanel (mic FAB bottom sheet, SpeechRecognizer voice-to-text, conversation history), SettingsScreen (key mgmt, per-type notification toggles, lead-time slider, exact-alarm/battery-exemption setup, theme), OnboardingScreen (plain-language permission flow). All UI under ForgeBuildTheme with MaterialTheme tokens + EngineIcons only, zero hardcoded colors. Deps justified: Room/KSP (persistence), DataStore (settings), ktor-client-okhttp (Gemini HTTPS), security-crypto (key storage), serialization (payloads), lifecycle-viewmodel-compose (screen state) \u2014 versions mirrored from sibling forgehouse50 proven on the same toolchain."
     },
     {
       "id": "step-6",
@@ -102,7 +102,7 @@
       "id": "step-16",
       "title": "AI task creation FIX: correct Gemini v1beta REST payload key casing (functionDeclarations/systemInstruction/generationConfig/functionCall/functionResponse were snake_case -> function calling never engaged, so create_task never ran); add recurrence_end tool param",
       "status": "done",
-      "notes": "ROOT CAUSE of AI create-task failure: Gemini v1beta REST payload used snake_case keys (system_instruction/generation_config/function_declarations/function_call/function_response) — the API expects camelCase (systemInstruction/generationConfig/functionDeclarations/functionCall/functionResponse), so tool declarations were silently ignored and function calls never parsed; create_task never ran. All keys corrected in GeminiClient/TaskAgentTools and the response parser now reads functionCall. Added recurrence_end tool param to create_task/update_task. Mandatory-duration inference already in system prompt; remaining-time validation retained."
+      "notes": "ROOT CAUSE of AI create-task failure: Gemini v1beta REST payload used snake_case keys (system_instruction/generation_config/function_declarations/function_call/function_response) \u2014 the API expects camelCase (systemInstruction/generationConfig/functionDeclarations/functionCall/functionResponse), so tool declarations were silently ignored and function calls never parsed; create_task never ran. All keys corrected in GeminiClient/TaskAgentTools and the response parser now reads functionCall. Added recurrence_end tool param to create_task/update_task. Mandatory-duration inference already in system prompt; remaining-time validation retained."
     },
     {
       "id": "step-17",
@@ -144,23 +144,23 @@
       "id": "step-23",
       "title": "NEW overnight/cross-midnight tasks: single logical task split into two linked per-day segments (one-off + recurring fixed-time); day accounting, due-now pinning, day/week/month/year views safe",
       "status": "done",
-      "notes": "Overnight/cross-midnight tasks modeled as ONE logical task whose span (fixedTime .. fixedTime+duration) can cross midnight. DayAccounting.spanOf/crossesMidnight/segmentsOnDay split the span into per-day segments: pre-midnight portion counts on the start day, post-midnight on the next. Validations (TaskViewModel.addTask/saveEdit, TaskAgentTools create/update) now charge only the TODAY segment against today's remaining time. sweepMissed and stale due-now clearing are span-aware (task not missed/pin-cleared while its span still runs past midnight). Day/week/month/year views use DayAccounting.touchesDay so each day shows the task segment. One entry/one completion/one edit preserved. TaskListScreen shows the linked span label (e.g. '20:00 → 03:00 +1d')."
+      "notes": "Overnight/cross-midnight tasks modeled as ONE logical task whose span (fixedTime .. fixedTime+duration) can cross midnight. DayAccounting.spanOf/crossesMidnight/segmentsOnDay split the span into per-day segments: pre-midnight portion counts on the start day, post-midnight on the next. Validations (TaskViewModel.addTask/saveEdit, TaskAgentTools create/update) now charge only the TODAY segment against today's remaining time. sweepMissed and stale due-now clearing are span-aware (task not missed/pin-cleared while its span still runs past midnight). Day/week/month/year views use DayAccounting.touchesDay so each day shows the task segment. One entry/one completion/one edit preserved. TaskListScreen shows the linked span label (e.g. '20:00 \u2192 03:00 +1d')."
     },
     {
       "id": "step-24",
       "title": "FIX Unfinished view retention: auto-delete recurring (and all) unfinished entries after configurable retention period, same as Completed",
       "status": "done",
-      "notes": "Unfinished (missed) tasks — including recurring instances — now expire under the SAME configurable retention period as Completed. TaskDao.deleteMissedBefore(cutoff) added; TaskRepository.purgeExpiredMissed(retentionDays) added; TaskViewModel purges missed entries both on app init and whenever retentionDays changes. Settings UI label updated to 'Completed & Unfinished Retention' so the shared period is explicit."
+      "notes": "Unfinished (missed) tasks \u2014 including recurring instances \u2014 now expire under the SAME configurable retention period as Completed. TaskDao.deleteMissedBefore(cutoff) added; TaskRepository.purgeExpiredMissed(retentionDays) added; TaskViewModel purges missed entries both on app init and whenever retentionDays changes. Settings UI label updated to 'Completed & Unfinished Retention' so the shared period is explicit."
     },
     {
       "id": "step-25",
       "title": "FIX voice waveform: true WhatsApp-style scrolling bars (right-to-left), per-bar live amplitude, uniform width/spacing/rounding",
       "status": "done",
-      "notes": "Voice waveform rebuilt as a true WhatsApp-style scrolling strip: every 90ms mic sample (maxAmplitude, sqrt-shaped for perceptual evenness) appends ONE new bar to a rolling history (cap 48) shown newest-at-right, older bars sliding left continuously. Bars drawn on a Canvas with uniform 4dp width / 3dp gap / fully rounded caps and single accent color with subtle age fade — no more wobbling sine shape. Removed the old sin-based bar layout and unused import."
+      "notes": "Voice waveform rebuilt as a true WhatsApp-style scrolling strip: every 90ms mic sample (maxAmplitude, sqrt-shaped for perceptual evenness) appends ONE new bar to a rolling history (cap 48) shown newest-at-right, older bars sliding left continuously. Bars drawn on a Canvas with uniform 4dp width / 3dp gap / fully rounded caps and single accent color with subtle age fade \u2014 no more wobbling sine shape. Removed the old sin-based bar layout and unused import."
     },
     {
       "id": "step-26",
-      "title": "CRITICAL full UI reimagining from scratch: Material 3 Expressive throughout — official wavy/animated progress + loading indicators, expressive press/state animations, new layouts/navigation, premium Google first-party feel",
+      "title": "CRITICAL full UI reimagining from scratch: Material 3 Expressive throughout \u2014 official wavy/animated progress + loading indicators, expressive press/state animations, new layouts/navigation, premium Google first-party feel",
       "status": "done",
       "notes": "Full front-end rebuilt from scratch on top of the kept backend/logic. Home screen: new MediumTopAppBar with single overflow menu (Unfinished/Completed/Settings) replacing the icon-button row; new hero 'Today' panel built on the OFFICIAL expressive wavy progress indicators (EngineCircularWavyProgress + EngineLinearWavyProgress = LinearWavyProgressIndicator/CircularWavyProgressIndicator, material3 1.5.0-alpha28) replacing the old static LinearProgressIndicator card; animated breadcrumb strip; redesigned empty state; stacked FAB column (voice / AI chat / extended New-task). Rows rebuilt as full-bleed TaskRowItem.kt on the largeIncreased shape tier with a type-dot (replacing the accent stripe), per-row overflow menu, drag handle, and container colour animated via the official expressive MotionScheme (MotionTokens.defaultEffects). Expressive press/state morphs added via official ButtonDefaults.shapes() / IconButtonDefaults.shapes() on the creation confirm, edit save, chat send/mic, and the destructive Clear-All dialog buttons. Loading states remain the official expressive LoadingIndicator (EngineLoadingIndicator/ExpressiveLoading) already used in edit/chat screens. NO hand-rolled expressive approximations anywhere; zero substitutions."
     },
@@ -222,7 +222,7 @@
       "id": "step-36",
       "title": "Due-now alert persists for full task duration (start..start+duration); after elapsed & uncompleted, transition to subtle 'time passed' visual state distinct from due-now and normal",
       "status": "done",
-      "notes": "Due-now now persists for the FULL span: ACTION_DUE fires markDue AND scheduleDueEnd(start+duration); new ACTION_DUE_END alarm runs repo.transitionDueNow() (DAO dueNowPinned query) which drops the loud pin exactly when start+duration elapses; ViewModel also sweeps stale pins on open. New subtle 'Time passed' state in TaskRowItem (overdueWindow: !dueNow && !completed && span elapsed): surfaceContainerHigh container, outline-toned timer icon + label, dimmed title — visually distinct from both the pulsing error DUE NOW alert and the normal state."
+      "notes": "Due-now now persists for the FULL span: ACTION_DUE fires markDue AND scheduleDueEnd(start+duration); new ACTION_DUE_END alarm runs repo.transitionDueNow() (DAO dueNowPinned query) which drops the loud pin exactly when start+duration elapses; ViewModel also sweeps stale pins on open. New subtle 'Time passed' state in TaskRowItem (overdueWindow: !dueNow && !completed && span elapsed): surfaceContainerHigh container, outline-toned timer icon + label, dimmed title \u2014 visually distinct from both the pulsing error DUE NOW alert and the normal state."
     },
     {
       "id": "step-37",
@@ -234,13 +234,13 @@
       "id": "step-38",
       "title": "Task timer: play/pause countdown per task, unique kitchen-timer ding on finish, extend-or-complete choice after ding, AI control for start/pause/resume/extend incl. mid-countdown",
       "status": "done",
-      "notes": "Per-task countdown timer: Task gains timerEndsAt/timerRemainingMs/timerFinished (Room DB v4). New data/TimerEngine state machine (IDLE/RUNNING/PAUSED/FINISHED; start/pause/resume/extend incl. mid-countdown and post-finish). TaskRowItem shows play button, live mm:ss countdown + pause while running, resume while paused, and Extend/Done actions when finished. Extend dialog offers +5/+10/+15/+30 chips, hours+minutes fields, or Mark complete. Distinct completion sound = notify/TimerSounds synthesized triple 'oven ding' (C7/E7/G7 partials, exponential decay, USAGE_ALARM) — not a notification tone; plays in foreground via the 1s UI ticker and in background via ACTION_TIMER_END exact alarm (stale-alarm guarded). AI control: new start_timer/pause_timer/extend_timer (amount+unit) tools, timer state surfaced in list_tasks, TASK TIMERS rule in the system prompt. Timer state is cleared on completion."
+      "notes": "Per-task countdown timer: Task gains timerEndsAt/timerRemainingMs/timerFinished (Room DB v4). New data/TimerEngine state machine (IDLE/RUNNING/PAUSED/FINISHED; start/pause/resume/extend incl. mid-countdown and post-finish). TaskRowItem shows play button, live mm:ss countdown + pause while running, resume while paused, and Extend/Done actions when finished. Extend dialog offers +5/+10/+15/+30 chips, hours+minutes fields, or Mark complete. Distinct completion sound = notify/TimerSounds synthesized triple 'oven ding' (C7/E7/G7 partials, exponential decay, USAGE_ALARM) \u2014 not a notification tone; plays in foreground via the 1s UI ticker and in background via ACTION_TIMER_END exact alarm (stale-alarm guarded). AI control: new start_timer/pause_timer/extend_timer (amount+unit) tools, timer state surfaced in list_tasks, TASK TIMERS rule in the system prompt. Timer state is cleared on completion."
     },
     {
       "id": "step-39",
       "title": "Voice recording waveform must travel full width (right edge to left edge) symmetrically",
       "status": "done",
-      "notes": "Waveform full-width fix: RecordingPill bar x-position now computed from the canvas edges (x = width - barWidth - step*fromRight) instead of sample-count-relative offset, so the strip starts flush right and the oldest bar reaches x=0 flush left when full — symmetrical travel."
+      "notes": "Waveform full-width fix: RecordingPill bar x-position now computed from the canvas edges (x = width - barWidth - step*fromRight) instead of sample-count-relative offset, so the strip starts flush right and the oldest bar reaches x=0 flush left when full \u2014 symmetrical travel."
     },
     {
       "id": "step-40",
@@ -268,9 +268,9 @@
     },
     {
       "id": "step-44",
-      "title": "CRITICAL FIX: sub-task added from a task's edit screen is created as root task — attach as child of the edited task",
+      "title": "CRITICAL FIX: sub-task added from a task's edit screen is created as root task \u2014 attach as child of the edited task",
       "status": "done",
-      "notes": "FIXED: TaskEditScreen's add-subtask control called vm.addTask() which defaulted the parent to the nav level (root at top level), so the sub-task landed as a standalone root task. TaskViewModel.addTask now takes an optional parentId that overrides the nav path, and the edit screen passes current.id — sub-tasks added from the edit screen nest under the edited task."
+      "notes": "FIXED: TaskEditScreen's add-subtask control called vm.addTask() which defaulted the parent to the nav level (root at top level), so the sub-task landed as a standalone root task. TaskViewModel.addTask now takes an optional parentId that overrides the nav path, and the edit screen passes current.id \u2014 sub-tasks added from the edit screen nest under the edited task."
     },
     {
       "id": "step-45",
@@ -288,7 +288,7 @@
       "id": "step-47",
       "title": "FIX main-screen indicators duplicating one metric: circular keeps remaining-today/booked; horizontal shows 24h vs used (elapsed + booked)",
       "status": "done",
-      "notes": "FIXED duplicated metric: circular indicator unchanged (remaining-today / % booked). Horizontal bar now shows a distinct metric — the full 24h day vs used (elapsed minutes + booked/allocated task minutes), with an explicit 'Day used: Xh Ym of 24h (elapsed + booked)' caption. New TaskViewModel.elapsedMinutesToday + usedDayMinutes flows."
+      "notes": "FIXED duplicated metric: circular indicator unchanged (remaining-today / % booked). Horizontal bar now shows a distinct metric \u2014 the full 24h day vs used (elapsed minutes + booked/allocated task minutes), with an explicit 'Day used: Xh Ym of 24h (elapsed + booked)' caption. New TaskViewModel.elapsedMinutesToday + usedDayMinutes flows."
     },
     {
       "id": "step-48",
@@ -307,6 +307,54 @@
       "title": "Set build_complete: true after taskflow-v7 verified",
       "status": "done",
       "notes": "build_complete set true only after taskflow-v7 verified live on the Releases API with both assets present. All Pass 7 fixes/features done: sub-task-from-edit parenting; Pomodoro timers (settings, free-break plan, short-task/leftover rules, persistent live-countdown notification with transition progress); exact-alarm permission flow; distinct 24h day-used horizontal bar; extend-timer UI. No engine/ changes; no substitutions."
+    },
+    {
+      "id": "step-51",
+      "title": "Pass 8: append Revision Pass 8 to PROMPT_HISTORY/taskflow.md; seed BUILD_STATE tasks",
+      "status": "done",
+      "notes": "Operator Pass-8 instruction appended verbatim under 2026-09-27 heading in PROMPT_HISTORY/taskflow.md. Pass-8 task list (steps 51-58) seeded; build_complete set false until taskflow-v8 is verified live."
+    },
+    {
+      "id": "step-52",
+      "title": "App Crashes: install CrashHandler with disk logging, fix foreground service background-start crash, MediaRecorder API 31+ construction, and safe notification/audio guards",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-53",
+      "title": "Background Reliability for AI Requests: make AgentOrchestrator application-scoped singleton with Process/App CoroutineScope and WakeLock so in-flight requests complete when backgrounded",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-54",
+      "title": "AI High-Usage Handling: implement retry with exponential backoff on 429/503/RESOURCE_EXHAUSTED errors in GeminiClient, distinguishing temporary load from invalid keys",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-55",
+      "title": "AI Agent Behavior: proactively populate task info from user explanations and reliably resolve parent tasks by title or ID for nested sub-tasks",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-56",
+      "title": "Normal (No-Fixed-Time) Future Tasks & Date Filtering Fix: add scheduledDate to Task entity, separate Date and Time in creation/edit UI, and fix day/week/month/year filtering so future tasks never appear in today",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-57",
+      "title": "Task Completion Animation: add satisfying visual confirmation (checkbox state, strikethrough, success highlight tint, and smooth exit) before removing completed tasks",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-58",
+      "title": "Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v8, verify release + assets live via GitHub Releases API, and set build_complete: true",
+      "status": "pending",
+      "notes": ""
     }
   ]
 }
