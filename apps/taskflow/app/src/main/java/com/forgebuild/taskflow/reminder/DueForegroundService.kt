@@ -4,11 +4,14 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import androidx.core.content.ContextCompat
 import com.forgebuild.taskflow.data.TaskRepository
 import com.forgebuild.taskflow.data.TimerEngine
 import com.forgebuild.taskflow.notify.NotificationHub
+import com.forgebuild.taskflow.util.CrashLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,12 +26,11 @@ import kotlinx.coroutines.launch
  * uses exact alarms + this persistent foreground indicator + a user-granted battery
  * exemption to ensure reminder delivery.
  *
- * Revision Pass 7: while any task timer is RUNNING, this service also posts a
+ * Revision Pass 7 & 8: while any task timer is RUNNING, this service also posts a
  * persistent live-countdown notification (updated once per second, silent). When the
  * running timer is a Pomodoro one it additionally shows progress toward the next
- * transition (toward the upcoming break in a work interval, toward resuming work in a
- * break) — the Android system renders that bar with the Material You wavy-progress
- * appearance on modern releases.
+ * transition. All foreground transitions and ticker queries are protected against
+ * crashes and ForegroundServiceStartNotAllowedException.
  */
 class DueForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
@@ -37,19 +39,30 @@ class DueForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        runCatching {
-            NotificationHub.ensureChannels(this)
-            startForeground(1001, NotificationHub.foregroundNotification(this))
-        }
+        startForegroundSafely()
         watchTimers()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        runCatching {
-            NotificationHub.ensureChannels(this)
-            startForeground(1001, NotificationHub.foregroundNotification(this))
-        }
+        startForegroundSafely()
         return START_STICKY
+    }
+
+    private fun startForegroundSafely() {
+        try {
+            NotificationHub.ensureChannels(this)
+            val notif = NotificationHub.foregroundNotification(this)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(1001, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1001, notif, 0)
+            } else {
+                startForeground(1001, notif)
+            }
+        } catch (e: Throwable) {
+            CrashLogger.logHandledException(this, "DueForegroundService", "startForeground failed: ${e.message}", e)
+            stopSelf()
+        }
     }
 
     override fun onDestroy() {
@@ -62,32 +75,34 @@ class DueForegroundService : Service() {
         val repo = TaskRepository.get(this)
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         serviceScope.launch {
-            // The Room flow re-emits on any task change; the 1s ticker drives the live
-            // countdown text between emissions. Posting the same id updates in place.
             while (isActive) {
-                val running = repo.allActiveNow().firstOrNull {
-                    TimerEngine.stateOf(it) == TimerEngine.TimerState.RUNNING
-                }
-                if (running == null) {
-                    NotificationHub.cancelTimerNotification(this@DueForegroundService)
-                } else {
-                    val now = System.currentTimeMillis()
-                    val remainingMs = TimerEngine.remainingMs(running, now)
-                    val seg = TimerEngine.currentSegment(running, now)
-                    val phaseLabel = seg?.let { if (it.isWork) "until break" else "until work resumes" }
-                    val progress = seg?.progress ?: -1f
-                    runCatching {
-                        nm.notify(
-                            NotificationHub.TIMER_NOTIFICATION_ID,
-                            NotificationHub.timerNotification(
-                                this@DueForegroundService,
-                                running.title,
-                                fmtCountdown(remainingMs),
-                                phaseLabel,
-                                progress
-                            )
-                        )
+                try {
+                    val running = repo.allActiveNow().firstOrNull {
+                        TimerEngine.stateOf(it) == TimerEngine.TimerState.RUNNING
                     }
+                    if (running == null) {
+                        NotificationHub.cancelTimerNotification(this@DueForegroundService)
+                    } else {
+                        val now = System.currentTimeMillis()
+                        val remainingMs = TimerEngine.remainingMs(running, now)
+                        val seg = TimerEngine.currentSegment(running, now)
+                        val phaseLabel = seg?.let { if (it.isWork) "until break" else "until work resumes" }
+                        val progress = seg?.progress ?: -1f
+                        runCatching {
+                            nm.notify(
+                                NotificationHub.TIMER_NOTIFICATION_ID,
+                                NotificationHub.timerNotification(
+                                    this@DueForegroundService,
+                                    running.title,
+                                    fmtCountdown(remainingMs),
+                                    phaseLabel,
+                                    progress
+                                )
+                            )
+                        }
+                    }
+                } catch (e: Throwable) {
+                    CrashLogger.logHandledException(this@DueForegroundService, "DueForegroundService", "watchTimers tick error: ${e.message}", e)
                 }
                 delay(1000)
             }
@@ -107,6 +122,8 @@ class DueForegroundService : Service() {
             runCatching {
                 val intent = Intent(context, DueForegroundService::class.java)
                 ContextCompat.startForegroundService(context, intent)
+            }.onFailure { e ->
+                CrashLogger.logHandledException(context, "DueForegroundService", "startService failed: ${e.message}", e)
             }
         }
 

@@ -7,6 +7,7 @@ package com.forgebuild.taskflow.ui
 
 import android.Manifest
 import android.media.MediaRecorder
+import android.os.Build
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -166,7 +167,12 @@ fun ChatPanel(
         waveformSamples = emptyList()
         runCatching {
             val f = File(context.cacheDir, "voice_${System.currentTimeMillis()}.m4a")
-            val r = MediaRecorder()
+            val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                MediaRecorder(context)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaRecorder()
+            }
             r.setAudioSource(MediaRecorder.AudioSource.MIC)
             r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)

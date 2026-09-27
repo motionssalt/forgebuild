@@ -29,6 +29,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import com.forgebuild.taskflow.util.CrashLogger
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
@@ -519,6 +523,52 @@ fun SettingsScreen(
                         }
                         Text(if (isBatteryExempt) "Battery exempt" else "Exempt battery")
                     }
+                }
+                Spacer(Modifier.height(SpacingTokens.Spacing.sm))
+                var showCrashLogDialog by remember { mutableStateOf(false) }
+                var crashLogText by remember { mutableStateOf("") }
+                OutlinedButton(
+                    onClick = {
+                        crashLogText = CrashLogger.getCrashLogs(context)
+                        showCrashLogDialog = true
+                    },
+                    shapes = ButtonDefaults.shapes()
+                ) {
+                    Icon(EngineIcons.Info, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Crash Diagnostics")
+                }
+                if (showCrashLogDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showCrashLogDialog = false },
+                        title = { Text("Crash Diagnostics") },
+                        text = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(280.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                Text(
+                                    crashLogText,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showCrashLogDialog = false }) {
+                                Text("Close")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = {
+                                CrashLogger.clearCrashLogs(context)
+                                crashLogText = "No crashes recorded."
+                            }) {
+                                Text("Clear Log")
+                            }
+                        }
+                    )
                 }
             }
 

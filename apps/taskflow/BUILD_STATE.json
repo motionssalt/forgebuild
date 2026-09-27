@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass8-session",
-  "current_task": "step-52",
+  "current_task": "step-53",
   "substitutions": [],
   "tasks": [
     {
@@ -317,8 +317,8 @@
     {
       "id": "step-52",
       "title": "App Crashes: install CrashHandler with disk logging, fix foreground service background-start crash, MediaRecorder API 31+ construction, and safe notification/audio guards",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "FIXED App Crashes: (1) Added CrashLogger installing Thread.setDefaultUncaughtExceptionHandler on startup, recording device model, OS API, timestamps, and full stacktraces to rolling local file crash_logs.txt and logcat; (2) Added Crash Diagnostics dialog in Settings > Reliability to inspect and clear logs; (3) Hardened DueForegroundService with Android 14 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE, handled ForegroundServiceStartNotAllowedException, and protected the 1s ticker loop against uncaught exceptions; (4) Updated ChatPanel MediaRecorder construction with API 31+ Context-aware constructor (MediaRecorder(context)) preventing initialization crashes on modern Android versions."
     },
     {
       "id": "step-53",
