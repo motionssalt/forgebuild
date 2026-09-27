@@ -277,3 +277,39 @@ This is a follow-up pass on the existing app (previous revisions already impleme
 
 ## Task Time-Extension UI Is Messed Up (FIX)
 - The icon used for extending an active task's time, and the extension UI/flow itself, currently look broken/off. Fix the layout and visual presentation of the extend-time icon and its associated UI so it displays correctly and cleanly.
+
+---
+
+# TaskFlow — Revision Pass 8 (Fixes) — 2026-09-27
+
+This is a follow-up pass on the existing app (previous revisions already implemented). These are new fixes/requirements only. For each item below, after implementing, verify and confirm the fix actually works as described rather than assuming it's resolved — these are bugs the user has directly observed, so silent/unverified "fixes" are not acceptable.
+
+## Task Completion Needs a Visible Animation (NEW)
+- Currently, checking off a task makes it disappear immediately, which reads as unsettling/like something went wrong rather than "task completed."
+- Add a clear completion animation (e.g. a checkmark confirmation, satisfying transition, brief highlight before it leaves the list) so the user visually understands the task was successfully completed and moved to Completed — not that it vanished/broke.
+
+## Background Reliability for In-Progress AI Requests (VERIFY / FIX)
+- If the user is sending a voice note or text to the AI and backgrounds/closes the app while that request is still in flight, the app should continue trying to send/complete that request in the background rather than abandoning it.
+- Confirm whether this currently works; if not, fix it so in-flight AI requests reliably continue and complete even if the app is backgrounded.
+
+## App Crashes (FIX)
+- The app crashes intermittently. Investigate and fix the underlying causes of these crashes (add proper crash logging/reporting if not already present, to help identify root causes going forward).
+
+## AI Should Proactively Write Task Info, Not Just Create the Task (NEW — agent behavior)
+- When the user verbally/textually explains details about a task while asking the AI to create it, the AI should not just create the bare task — it should also populate the task's info field with those explained details.
+- This should be strongly encouraged default behavior (not strictly mandatory in every case, but the AI should lean toward capturing explanatory detail in info rather than discarding it), since the user often explains reasoning/specifics they'll want to reference later and may not remember to ask for it separately.
+
+## Cannot Create a Normal (No-Fixed-Time) Task for a Future Date (FIX)
+- Currently, creating a task for a date other than today seems to require giving it a fixed time — there's no way to create a plain/normal task (no fixed time) scheduled for a future date (e.g. "a task for next Friday" with no specific time).
+- Fix so normal tasks (without a fixed time) can be created for any date, not just today.
+
+## AI Should Retry/Wait on High-Usage Errors Instead of Failing Immediately (FIX)
+- When the Gemini API is under high load/rate-limited, the app currently surfaces this to the user as a generic failure (e.g. implying a quota/API-key problem), even though the real cause is temporary high usage.
+- Fix so the app distinguishes this case and retries (with reasonable backoff) until it eventually gets a response, rather than immediately erroring out to the user. Only surface a real failure message if retries are genuinely exhausted or the actual cause is something other than temporary high load (e.g. an actual invalid/expired key).
+
+## AI Sub-task Creation Sometimes Not Nesting Correctly (FIX)
+- When asked to create a task inside another task via the AI, it sometimes fails to actually nest it inside the specified parent. Fix so AI-driven sub-task creation reliably nests under the correct parent task every time.
+
+## Date Filter/View Bug — Task Appearing Under Wrong Date Range (FIX — verify and fix)
+- A task created for next month was observed appearing in the "today" view, despite its stored date clearly being next month.
+- Confirm whether the day/week/month/year filtering logic is actually broken (this sounds like a genuine bug, not user error) and fix it so tasks only appear under the date range(s) they actually belong to.
