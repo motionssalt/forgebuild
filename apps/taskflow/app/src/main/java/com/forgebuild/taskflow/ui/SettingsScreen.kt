@@ -71,6 +71,7 @@ import com.forgebuild.engine.permissions.PermissionWiring
 import com.forgebuild.engine.ui.icons.EngineIcons
 import com.forgebuild.engine.ui.theme.MotionTokens
 import com.forgebuild.engine.ui.theme.SpacingTokens
+import com.forgebuild.taskflow.ai.AgentOrchestrator
 import com.forgebuild.taskflow.settings.GeminiKeyStore
 import com.forgebuild.taskflow.settings.NotifType
 import com.forgebuild.taskflow.settings.ThemeMode
@@ -260,6 +261,40 @@ fun SettingsScreen(
                             disabledContentColor = MaterialTheme.colorScheme.outline
                         )
                     ) { Icon(EngineIcons.Add, "Add key") }
+                }
+
+                Spacer(Modifier.height(SpacingTokens.Spacing.sm))
+                var showClearChatDialog by remember { mutableStateOf(false) }
+                OutlinedButton(
+                    onClick = { showClearChatDialog = true },
+                    shapes = ButtonDefaults.shapes()
+                ) {
+                    Icon(EngineIcons.Delete, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Clear AI Chat History")
+                }
+                if (showClearChatDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showClearChatDialog = false },
+                        title = { Text("Clear Chat History?") },
+                        text = { Text("This will clear all sent and received AI conversation messages.") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    AgentOrchestrator.get(context).clearMessages()
+                                    showClearChatDialog = false
+                                    android.widget.Toast.makeText(context, "AI chat history cleared", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Text("Clear", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showClearChatDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
                 }
             }
 

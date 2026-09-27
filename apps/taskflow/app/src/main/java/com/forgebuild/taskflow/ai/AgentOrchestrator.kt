@@ -57,6 +57,10 @@ class AgentOrchestrator private constructor(context: Context) {
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages
 
+    fun clearMessages() {
+        _messages.value = emptyList()
+    }
+
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy
 

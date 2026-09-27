@@ -45,6 +45,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -281,13 +282,41 @@ fun ChatPanel(
                         )
                     }
                 }
-                TextButton(
-                    onClick = {
-                        cancelRecording()
-                        onClose()
-                    },
-                    shapes = ButtonDefaults.shapes()
-                ) { Text("Done") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (messages.isNotEmpty()) {
+                        var showConfirmClear by remember { mutableStateOf(false) }
+                        IconButton(
+                            onClick = { showConfirmClear = true }
+                        ) {
+                            Icon(EngineIcons.Delete, contentDescription = "Clear chat", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (showConfirmClear) {
+                            AlertDialog(
+                                onDismissRequest = { showConfirmClear = false },
+                                title = { Text("Clear conversation?") },
+                                text = { Text("All current messages in this conversation will be cleared.") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        orchestrator.clearMessages()
+                                        showConfirmClear = false
+                                    }) {
+                                        Text("Clear", color = MaterialTheme.colorScheme.error)
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showConfirmClear = false }) { Text("Cancel") }
+                                }
+                            )
+                        }
+                    }
+                    TextButton(
+                        onClick = {
+                            cancelRecording()
+                            onClose()
+                        },
+                        shapes = ButtonDefaults.shapes()
+                    ) { Text("Done") }
+                }
             }
 
             Spacer(Modifier.height(SpacingTokens.Spacing.sm))

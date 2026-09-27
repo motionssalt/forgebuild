@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass9-session",
-  "current_task": "step-60",
+  "current_task": "step-61",
   "substitutions": [],
   "tasks": [
     {
@@ -365,8 +365,8 @@
     {
       "id": "step-60",
       "title": "Clear AI Chat Message History: add clearChatHistory() in DAO/Repository/Orchestrator and wire clear action with confirmation in Settings > AI Assistant and ChatPanel",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Added clearMessages() in AgentOrchestrator resetting _messages StateFlow to emptyList(). Wired 'Clear AI Chat History' in Settings > Intelligence with Material 3 confirmation AlertDialog and confirmation Toast. Added in-chat delete icon button in ChatPanel header with confirmation dialog so users can clear message history directly from the conversation panel as well as from Settings, preventing indefinite log growth."
     },
     {
       "id": "step-61",
