@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass8-session",
-  "current_task": "step-55",
+  "current_task": "step-56",
   "substitutions": [],
   "tasks": [
     {
@@ -335,8 +335,8 @@
     {
       "id": "step-55",
       "title": "AI Agent Behavior: proactively populate task info from user explanations and reliably resolve parent tasks by title or ID for nested sub-tasks",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "FIXED AI Agent Behavior: (1) Added prompt directives in AgentOrchestrator and updated tool parameter documentation to proactively capture user explanations, steps, reasoning, and context in task info rather than discarding details; (2) Added TaskRepository.findByTitle() and parent_title resolution in TaskAgentTools (create_task & move_task) resolving parent tasks by numeric ID or string title match, ensuring AI-created sub-tasks nest reliably under their parent task every time."
     },
     {
       "id": "step-56",

@@ -48,15 +48,17 @@ class TaskAgentTools(private val repo: TaskRepository) {
             "parent_id" to prop("integer", "Parent task id; omit for top level."),
             "query" to prop("string", "Optional case-insensitive title filter.")))
 
-        d("create_task", "Create a task. Duration is mandatory (in minutes); if user did not specify, you MUST infer a reasonable estimate (e.g. 15, 30, 45, 60 min).", mapOf(
+        d("create_task", "Create a task. Duration is mandatory (in minutes); if user did not specify, you MUST infer a reasonable estimate (e.g. 15, 30, 45, 60 min). Proactively capture explanatory details in the info field.", mapOf(
             "title" to prop("string", "Task title (required)."),
             "duration_minutes" to prop("integer", "Estimated duration in minutes (e.g. 15, 30, 45, 60). Mandatory."),
-            "parent_id" to prop("integer", "Parent id for a sub-task."),
+            "parent_id" to prop("integer", "Numeric parent task id for a sub-task."),
+            "parent_title" to prop("string", "Title or keywords of parent task to nest inside (e.g. 'Groceries'). Automatically resolves parent if parent_id is omitted."),
+            "scheduled_date" to prop("string", "Target date 'yyyy-MM-dd' for plain/normal tasks scheduled for a future day without a fixed clock time."),
             "fixed_time" to prop("string", "Local datetime 'yyyy-MM-dd HH:mm'. ONLY set this when the user explicitly stated or clearly implied a specific clock time (e.g. 'at 3pm', 'remind me tomorrow at 9'). NEVER invent or auto-assign a time — untimed is the default."),
             "recurrence" to prop("string", "none, daily, weekly, monthly, yearly."),
             "weekdays" to prop("string", "For weekly: comma list like tue or mon,wed,fri."),
             "recurrence_end" to prop("string", "Optional last day of a recurrence as 'yyyy-MM-dd' (repeat until that date, then stop). Omit for indefinite."),
-            "info" to prop("string", "Free-text notes on how to do the task.")), listOf("title"))
+            "info" to prop("string", "Detailed notes, steps, reasoning, or explanatory context for the task. PROACTIVELY populate this whenever the user explains details about what needs to be done.")), listOf("title"))
 
         d("update_task", "Update any task field.", mapOf(
             "task_id" to prop("integer", "Task id (required)."),
@@ -82,7 +84,8 @@ class TaskAgentTools(private val repo: TaskRepository) {
 
         d("move_task", "Reparent a task under another task (or to top level if new_parent_id omitted).", mapOf(
             "task_id" to prop("integer", "Task to move (required)."),
-            "new_parent_id" to prop("integer", "New parent task id; omit for top level.")), listOf("task_id"))
+            "new_parent_id" to prop("integer", "New parent task id; omit for top level."),
+            "new_parent_title" to prop("string", "Title of new parent task to nest under; omit for top level.")), listOf("task_id"))
 
         d("start_timer", "Start (or resume) the countdown timer on a task, based on its duration.", mapOf(
             "task_id" to prop("integer", "Task id (required).")), listOf("task_id"))
@@ -128,6 +131,19 @@ class TaskAgentTools(private val repo: TaskRepository) {
             }
         }
         return mask
+    }
+
+    /** Parse 'yyyy-MM-dd' into start-of-day millis; 'clear'/blank -> null. */
+    private fun parseDate(s: String?): Long? {
+        if (s.isNullOrBlank() || s.equals("clear", true)) return null
+        return runCatching {
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(s.trim())?.let { d ->
+                val cal = Calendar.getInstance().apply { time = d }
+                cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+                cal.timeInMillis
+            }
+        }.getOrNull()
     }
 
     /** Parse 'yyyy-MM-dd' into end-of-day millis; 'clear'/blank -> null. */

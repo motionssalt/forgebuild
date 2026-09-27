@@ -36,12 +36,22 @@ class TaskRepository(private val dao: TaskDao, private val appContext: Context? 
     suspend fun siblingsOf(parentId: Long?): List<Task> = withContext(Dispatchers.IO) { dao.children(parentId) }
     suspend fun activeSiblingsOf(parentId: Long?): List<Task> = withContext(Dispatchers.IO) { dao.activeChildren(parentId) }
 
+    /** Find an active task by full or partial title match for AI parent-task resolution. */
+    suspend fun findByTitle(query: String): Task? = withContext(Dispatchers.IO) {
+        val q = query.trim()
+        if (q.isBlank()) return@withContext null
+        val all = dao.allActive()
+        all.firstOrNull { it.title.equals(q, ignoreCase = true) }
+            ?: all.firstOrNull { it.title.contains(q, ignoreCase = true) }
+    }
+
     suspend fun create(
         title: String,
         parentId: Long? = null,
         rank: Double? = null,
         durationMinutes: Long = 30L,
         fixedTime: Long? = null,
+        scheduledDate: Long? = null,
         recurrence: Recurrence = Recurrence.NONE,
         weekdaysMask: Int = 0,
         info: String = "",
@@ -56,6 +66,7 @@ class TaskRepository(private val dao: TaskDao, private val appContext: Context? 
             rank = r,
             durationMinutes = dur,
             fixedTime = fixedTime,
+            scheduledDate = scheduledDate,
             recurrence = recurrence,
             weekdaysMask = weekdaysMask,
             info = info,

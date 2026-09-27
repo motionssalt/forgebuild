@@ -30,6 +30,8 @@ data class Task(
     val durationMinutes: Long = 30L,
     /** Optional fixed due time, epoch millis. */
     val fixedTime: Long? = null,
+    /** Optional scheduled calendar date (epoch millis at dayStart) for normal tasks without a fixed time. */
+    val scheduledDate: Long? = null,
     val recurrence: Recurrence = Recurrence.NONE,
     /** For WEEKLY recurrence: bitmask of weekdays (Calendar.MONDAY -> bit 0). */
     val weekdaysMask: Int = 0,
