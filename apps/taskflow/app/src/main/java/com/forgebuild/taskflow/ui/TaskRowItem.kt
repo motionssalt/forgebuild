@@ -3,6 +3,11 @@
 package com.forgebuild.taskflow.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -113,6 +118,21 @@ fun TaskRowItem(
     onDragBy: (Float) -> Unit,
     onDragEnd: () -> Unit
 ) {
+    val rowScope = rememberCoroutineScope()
+    var isCompleting by remember(task.id, task.completed) { mutableStateOf(false) }
+
+    fun handleToggle() {
+        if (task.completed) {
+            onToggle()
+        } else if (!isCompleting) {
+            isCompleting = true
+            rowScope.launch {
+                delay(420)
+                onToggle()
+            }
+        }
+    }
+
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val dateFmt = remember { SimpleDateFormat("EEE, MMM d · HH:mm", Locale.getDefault()) }
     var rowMenuOpen by remember { mutableStateOf(false) }
@@ -156,6 +176,7 @@ fun TaskRowItem(
         TaskType.NORMAL -> MaterialTheme.colorScheme.outline
     }
     val targetContainer = when {
+        isCompleting -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = if (dark) 0.85f else 0.95f)
         task.dueNow -> MaterialTheme.colorScheme.errorContainer
         timerState == TimerEngine.TimerState.FINISHED ->
             MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = if (dark) 0.34f else 0.55f)
@@ -168,6 +189,17 @@ fun TaskRowItem(
             MaterialTheme.colorScheme.secondaryContainer.copy(alpha = if (dark) 0.24f else 0.40f)
         else -> MaterialTheme.colorScheme.surfaceContainerLow
     }
+
+    val completingAlpha by animateFloatAsState(
+        targetValue = if (isCompleting) 0.45f else 1f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "completingAlpha"
+    )
+    val completingScale by animateFloatAsState(
+        targetValue = if (isCompleting) 0.98f else 1f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "completingScale"
+    )
     @Suppress("UNCHECKED_CAST")
     val effectsSpec = MotionTokens.defaultEffects as
         androidx.compose.animation.core.AnimationSpec<androidx.compose.ui.graphics.Color>
@@ -203,6 +235,11 @@ fun TaskRowItem(
         shape = MaterialTheme.shapes.largeIncreased,
         color = containerColor,
         modifier = modifier
+            .graphicsLayer {
+                alpha = completingAlpha
+                scaleX = completingScale
+                scaleY = completingScale
+            }
             .fillMaxWidth()
             .clickable { onEdit() }
     ) {
@@ -245,8 +282,8 @@ fun TaskRowItem(
             )
 
             Checkbox(
-                checked = task.completed,
-                onCheckedChange = { onToggle() },
+                checked = task.completed || isCompleting,
+                onCheckedChange = { handleToggle() },
                 colors = CheckboxDefaults.colors(
                     checkedColor = MaterialTheme.colorScheme.primary,
                     uncheckedColor = MaterialTheme.colorScheme.outline
@@ -263,19 +300,47 @@ fun TaskRowItem(
                         text = task.title,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = if (task.dueNow) FontWeight.Bold else FontWeight.Normal,
-                            textDecoration = if (task.completed) TextDecoration.LineThrough else null
+                            textDecoration = if (task.completed || isCompleting) TextDecoration.LineThrough else null
                         ),
                         color = when {
+                            isCompleting -> MaterialTheme.colorScheme.onPrimaryContainer
                             task.dueNow -> MaterialTheme.colorScheme.onErrorContainer
                             overdueWindow -> MaterialTheme.colorScheme.onSurfaceVariant
                             else -> MaterialTheme.colorScheme.onSurface
                         },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .alpha(if (isCompleting) 0.7f else 1f)
                     )
                     Spacer(Modifier.width(6.dp))
                     DurationPill(minutes = task.durationMinutes)
+                    if (isCompleting) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    EngineIcons.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    "Completed",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(2.dp))

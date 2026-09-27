@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass8-session",
-  "current_task": "step-57",
+  "current_task": "step-58",
   "substitutions": [],
   "tasks": [
     {
@@ -347,8 +347,8 @@
     {
       "id": "step-57",
       "title": "Task Completion Animation: add satisfying visual confirmation (checkbox state, strikethrough, success highlight tint, and smooth exit) before removing completed tasks",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "FIXED Task Completion Animation: Added clear, delightful visual feedback on task completion in TaskRowItem. Tapping the checkbox now immediately ticks the checkmark, morphs the row card to a primaryContainer success tint, applies strike-through decoration to the title with subtle dimming, and pops a primary \"\u2713 Completed\" pill. The row holds this satisfying confirmation for 420ms before smoothly transitioning the task to the Completed list, eliminating any unsettling sensation that a task vanished or broke."
     },
     {
       "id": "step-58",
