@@ -3,7 +3,7 @@
   "project": "forgebuild-taskflow",
   "app_name": "TaskFlow",
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
-  "build_complete": false,
+  "build_complete": true,
   "updated_by": "taskflow-pass9-session",
   "current_task": "step-63",
   "substitutions": [],
@@ -383,8 +383,8 @@
     {
       "id": "step-63",
       "title": "Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v9, verify release + assets live via GitHub Releases API, and set build_complete: true",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "release.yml dispatched (app_path=apps/taskflow); run 36394077862 completed success. Verified live via GitHub Releases API: tag taskflow-v9 (not draft/prerelease, published at 2026-09-28T07:56:18Z) with assets app-taskflow-v9.apk (2,274,157 bytes, R8-minified, repo-keystore signed) + forgebuild-manifest.json (829 bytes). Prior releases taskflow-v1..v8 untouched. All Pass 9 requirements implemented and verified: (1) ability to clear AI chat message history from Settings > Intelligence and from the ChatPanel header; (2) copy crash logs action with clipboard confirmation and toast feedback in Crash Diagnostics dialog; (3) AI future task creation with time availability evaluated against the actual target date rather than today's budget; (4) full AI tool audit supporting untimed future tasks, fixed-time (including cross-midnight), recurring tasks, sub-tasks at any depth, and task timers."
     }
   ]
 }
