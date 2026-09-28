@@ -394,6 +394,25 @@ class TaskRepository(private val dao: TaskDao, private val appContext: Context? 
         (minutesUntilMidnight - allocated).coerceAtLeast(0L)
     }
 
+    suspend fun getAllocatedMinutesForDay(dayMillis: Long, excludeTaskId: Long? = null): Long = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        DayAccounting.allocatedMinutesForDay(dao.allActive(), dayMillis, now, excludeTaskId)
+    }
+
+    suspend fun getRemainingMinutesForDay(dayMillis: Long, excludeTaskId: Long? = null): Long = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val targetDayStart = DayAccounting.dayStart(dayMillis)
+        val todayStart = DayAccounting.dayStart(now)
+        if (targetDayStart == todayStart) {
+            getRemainingMinutesToday(excludeTaskId)
+        } else if (targetDayStart < todayStart) {
+            0L
+        } else {
+            val allocated = getAllocatedMinutesForDay(dayMillis, excludeTaskId)
+            (1440L - allocated).coerceAtLeast(0L)
+        }
+    }
+
     fun dayStart(millis: Long): Long = DayAccounting.dayStart(millis)
 
     fun dayEnd(millis: Long): Long = DayAccounting.nextDayStart(millis) - 1L

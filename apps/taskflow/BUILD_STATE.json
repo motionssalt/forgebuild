@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass9-session",
-  "current_task": "step-62",
+  "current_task": "step-63",
   "substitutions": [],
   "tasks": [
     {
@@ -377,8 +377,8 @@
     {
       "id": "step-62",
       "title": "AI Future Tasks & Tool Audit: check budget against actual target date instead of today, add scheduled_date parameter, support all task types (untimed future, fixed-time, recurring, overnight, subtasks)",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "FIXED AI Future Tasks & Completed Full Tool Audit: (1) Added TaskRepository.getAllocatedMinutesForDay() and getRemainingMinutesForDay() computing unallocated minutes for any given calendar day (1440m - allocated on future days; minutesUntilMidnight - allocated on today); (2) Fixed create_task and update_task in TaskAgentTools so time availability is evaluated against the task's actual target date (targetDay = fixedTime ?: scheduledDate ?: todayStart) rather than blindly checking today's budget; (3) Handled overnight/cross-midnight tasks by checking both the target day portion and next day spill portion against their respective daily budgets; (4) Added scheduled_date parameter to create_task and update_task, passing scheduledDate to repo.create and repo.update so plain/normal tasks can be scheduled for any date; (5) Added title-based task resolution for parent tasks (parent_title/new_parent_title) in create_task and move_task, and fallback task_title resolution for delete_task, complete_task, move_task, start_timer, pause_timer, and extend_timer; (6) Added target date parameter to get_day_status and list_tasks, enabling the AI to inspect schedules and tasks for future dates; (7) Updated AgentOrchestrator system instructions to explicitly clarify independent per-day time budgets and all supported task types."
     },
     {
       "id": "step-63",
