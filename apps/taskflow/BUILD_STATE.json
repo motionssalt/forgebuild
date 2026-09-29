@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass10-session",
-  "current_task": "step-65",
+  "current_task": "step-66",
   "substitutions": [],
   "tasks": [
     {
@@ -395,8 +395,8 @@
     {
       "id": "step-65",
       "title": "Audit and fix all LazyColumn and LazyRow item keys across TaskFlow to guarantee unique, collision-proof keys",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Audited every LazyColumn and list item key in apps/taskflow: (1) Fixed ChatPanel.kt: ChatMessage now carries a persistent UUID id (AgentOrchestrator.kt); replaced vulnerable it.hashCode() key with TaskKeyUtils.buildUniqueMessageKeys; explicitly keyed empty_chat_guidance and busy_thinking_indicator items. (2) Created TaskKeyUtils.buildUniqueKeys() generating stable, guaranteed-unique keys (task_{id}_{tpl|inst}_{time/created}) with duplicate occurrence disambiguation. (3) Replaced naked t.id keys in TaskListScreen.kt, CompletedTasksScreen.kt, and UnfinishedTasksScreen.kt with TaskKeyUtils.buildUniqueKeys(), and keyed list_bottom_spacer item explicitly."
     },
     {
       "id": "step-66",

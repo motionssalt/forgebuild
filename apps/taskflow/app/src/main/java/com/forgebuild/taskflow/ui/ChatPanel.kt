@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -322,6 +323,9 @@ fun ChatPanel(
             Spacer(Modifier.height(SpacingTokens.Spacing.sm))
 
             // ── Message list: bubbles spring in as they appear ───────────────
+            val messageKeys = remember(messages) {
+                TaskKeyUtils.buildUniqueMessageKeys(messages.map { it.id })
+            }
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -330,7 +334,7 @@ fun ChatPanel(
                 verticalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)
             ) {
                 if (messages.isEmpty()) {
-                    item {
+                    item(key = "empty_chat_guidance") {
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shape = MaterialTheme.shapes.largeIncreased,
@@ -354,7 +358,7 @@ fun ChatPanel(
                     }
                 }
 
-                items(messages, key = { it.hashCode() }) { m ->
+                itemsIndexed(messages, key = { index, m -> messageKeys.getOrElse(index) { "msg_${m.id}_$index" } }) { _, m ->
                     // Spring-based entrance per message (official expressive motion spec).
                     @Suppress("UNCHECKED_CAST")
                     val spatial = MotionTokens.defaultSpatial as
@@ -377,7 +381,7 @@ fun ChatPanel(
                 }
 
                 if (busy) {
-                    item {
+                    item(key = "busy_thinking_indicator") {
                         Row(
                             Modifier.padding(SpacingTokens.Spacing.sm),
                             verticalAlignment = Alignment.CenterVertically,

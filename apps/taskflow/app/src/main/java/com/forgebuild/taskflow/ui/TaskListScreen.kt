@@ -305,12 +305,13 @@ fun TaskListScreen(
                     }
                 }
             } else {
+                val itemKeys = remember(tasks) { TaskKeyUtils.buildUniqueKeys(tasks) }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)
                 ) {
-                    itemsIndexed(tasks, key = { _, t -> t.id }) { index, task ->
+                    itemsIndexed(tasks, key = { index, _ -> itemKeys.getOrElse(index) { "task_fallback_$index" } }) { index, task ->
                         val isDragging = dragIndex == index
                         TaskRowItem(
                             task = task,
@@ -342,7 +343,7 @@ fun TaskListScreen(
                             }
                         )
                     }
-                    item { Spacer(Modifier.height(120.dp)) }
+                    item(key = "list_bottom_spacer") { Spacer(Modifier.height(120.dp)) }
                 }
             }
         }

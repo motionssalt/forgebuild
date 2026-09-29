@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -131,11 +132,12 @@ fun UnfinishedTasksScreen(
                     }
                 }
             } else {
+                val itemKeys = remember(missedList) { TaskKeyUtils.buildUniqueKeys(missedList) }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)
                 ) {
-                    items(missedList, key = { it.id }) { task ->
+                    itemsIndexed(missedList, key = { index, _ -> itemKeys.getOrElse(index) { "missed_fallback_$index" } }) { _, task ->
                         MissedTaskItem(
                             task = task,
                             whenText = task.fixedTime?.let { "Was due ${dateFormat.format(Date(it))}" } ?: "Missed",

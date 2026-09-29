@@ -22,7 +22,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-data class ChatMessage(val role: Role, val text: String) {
+data class ChatMessage(
+    val role: Role,
+    val text: String,
+    val id: String = java.util.UUID.randomUUID().toString()
+) {
     enum class Role { USER, MODEL, ACTION }
 }
 

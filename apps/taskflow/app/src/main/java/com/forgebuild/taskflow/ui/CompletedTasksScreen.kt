@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -130,11 +131,12 @@ fun CompletedTasksScreen(
                     }
                 }
             } else {
+                val itemKeys = remember(completedList) { TaskKeyUtils.buildUniqueKeys(completedList) }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)
                 ) {
-                    items(completedList, key = { it.id }) { task ->
+                    itemsIndexed(completedList, key = { index, _ -> itemKeys.getOrElse(index) { "completed_fallback_$index" } }) { _, task ->
                         CompletedTaskItem(
                             task = task,
                             completedText = task.completedAt?.let { "Completed ${dateFormat.format(Date(it))}" } ?: "Completed",
