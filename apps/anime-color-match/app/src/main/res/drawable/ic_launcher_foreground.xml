@@ -1,7 +1,24 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <!-- Placeholder bolt inside the 66dp safe zone; replaced per app by tools/make_adaptive_icon.py -->
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M57,26 L38,57 h13 L47,82 L70,49 h-15 L57,26 z" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 3D LUT Cube & Anime Color Grade Prism within 72dp safe zone -->
+    <path
+        android:fillColor="#E8DEF8"
+        android:pathData="M54,26 L78,39 L54,52 L30,39 Z" />
+    <path
+        android:fillColor="#9A82DB"
+        android:pathData="M30,39 L54,52 L54,78 L30,65 Z" />
+    <path
+        android:fillColor="#D0BCFF"
+        android:pathData="M54,52 L78,39 L78,65 L54,78 Z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M38,55 C46,65 62,45 70,55" />
+    <path
+        android:fillColor="#FFD8E4"
+        android:pathData="M54,42 A3,3 0 1,0 54,48 A3,3 0 1,0 54,42 Z" />
 </vector>

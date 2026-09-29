@@ -5,7 +5,7 @@
   "package": "com.forgebuild.animecolormatch",
   "build_complete": false,
   "updated_by": "session-1",
-  "current_task": "step-2",
+  "current_task": "step-3",
   "tasks": [
     {
       "id": "step-1",
@@ -22,8 +22,8 @@
     {
       "id": "step-3",
       "title": "Adaptive icon via tools/make_adaptive_icon.py",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Adaptive icon configured with 3D LUT cube / color prism vector foreground in 72dp safe zone and deep anime violet background #1D1335."
     },
     {
       "id": "step-4",
@@ -58,6 +58,10 @@
     {
       "session": "session-1",
       "event": "step-2 done: identity configured (com.forgebuild.animecolormatch / Anime Color Match)"
+    },
+    {
+      "session": "session-1",
+      "event": "step-3 done: adaptive icon configured and committed"
     }
   ],
   "notes": "App designed specifically for AMV and anime video editors. Includes direct image import, range candidate search, live multi-stage automatic color progression visualizer with streaming math logs, AE-style Levels and Curves manual editor, non-destructive layer stack, real-time video playback color grade preview, and standard .cube / HALD CLUT export."
