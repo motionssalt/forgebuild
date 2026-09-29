@@ -1,9 +1,9 @@
 {
   "slug": "anime-lut-match",
   "project": "forgebuild-anime-lut-match",
-  "build_complete": false,
+  "build_complete": true,
   "updated_by": "build-agent",
-  "current_task": "step-6",
+  "current_task": "done",
   "tasks": [
     {
       "id": "step-1",
@@ -38,14 +38,14 @@
     {
       "id": "step-6",
       "title": "Validate build config, dispatch release.yml (app_path=apps/anime-lut-match), release anime-lut-match-v1, verify APK asset via Releases API",
-      "status": "in_progress",
-      "notes": ""
+      "status": "done",
+      "notes": "release.yml dispatched 3x (2 CI compile fixes applied en route: ColorMath gamma Double/Float, missing kotlinx.coroutines.launch import). anime-lut-match-v1 released and verified via Releases API."
     },
     {
       "id": "step-7",
       "title": "Set build_complete: true only after anime-lut-match-v1 is verified live",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "build_complete set to true after anime-lut-match-v1 verified live on the GitHub Releases API (APK + forgebuild-manifest.json assets present)."
     }
   ],
   "notes": "Substitution entries: NONE. Research decisions: pending (auto color-match technique evaluation recorded at step-5). Engine helpers used: SafeSave (export), ScreenSecurity (frame screens), PermissionWiring (only if a permission is genuinely needed \u2014 SAF requires none). Permissions model: Storage Access Framework only (ACTION_OPEN_DOCUMENT / ACTION_CREATE_DOCUMENT); no broad storage permissions."
