@@ -41,7 +41,7 @@ object ColorMath {
         var gamma = 1f
         val linMed = lin(inMed)
         val tm = ((outMed - linMed) / 255f).coerceIn(0.01f, 0.99f)
-        gamma = (Math.log(tm.toDouble()) / Math.log((linMed / 255f).coerceIn(0.01, 0.99))).toFloat().coerceIn(0.1f, 10f)
+        gamma = (Math.log(tm.toDouble()) / Math.log((linMed / 255f).toDouble().coerceIn(0.01, 0.99))).toFloat().coerceIn(0.1f, 10f)
         val lut = FloatArray(256)
         for (i in 0..255) {
             val t = (lin(i.toFloat()) / 255f).coerceIn(0f, 1f)
