@@ -1,0 +1,7 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Placeholder bolt inside the 66dp safe zone; replaced per app by tools/make_adaptive_icon.py -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M57,26 L38,57 h13 L47,82 L70,49 h-15 L57,26 z" />
+</vector>
