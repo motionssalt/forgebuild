@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass10-session",
-  "current_task": "step-66",
+  "current_task": "step-67",
   "substitutions": [],
   "tasks": [
     {
@@ -401,8 +401,8 @@
     {
       "id": "step-66",
       "title": "Verify list rendering stability with simulated recurring instances, overnight segments, and identical IDs",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Verified list rendering stability and collision immunity across all scenarios: (1) Replicated conditions from both crash reports (recurring instances sharing base task IDs, duplicate items during state emissions/recomposition, and overnight multi-segment spans); verified that TaskKeyUtils.buildUniqueKeys() generates strictly collision-free, stable keys. (2) Tested worst-case stress scenarios including 100 identical tasks with identical IDs/timestamps, confirming duplicate disambiguation (_dupN suffix) ensures 100% unique keys. (3) Verified chat message keying with persistent UUIDs and disambiguated message keys in ChatPanel.kt."
     },
     {
       "id": "step-67",
