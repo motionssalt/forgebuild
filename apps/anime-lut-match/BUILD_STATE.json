@@ -3,7 +3,7 @@
   "project": "forgebuild-anime-lut-match",
   "build_complete": false,
   "updated_by": "build-agent",
-  "current_task": "step-5",
+  "current_task": "step-6",
   "tasks": [
     {
       "id": "step-1",
@@ -32,13 +32,13 @@
     {
       "id": "step-5",
       "title": "Implement app (video ingest, frame extraction, frame matching, auto/manual color, Levels/Curves, effect stack, LUT .cube + HALD gen, preview, export) \u2014 one feature per commit/push",
-      "status": "pending",
-      "notes": "Engine modules reused where relevant: SafeSave (Storage Access Framework) for .cube/HALD export; ScreenSecurity (FLAG_SECURE) on screens showing the imported video frames (sensitive user media); no network/live-data so CacheFirstStore not required."
+      "status": "done",
+      "notes": "Implemented the full working pipeline (not a mockup), independent modules: video/VideoFrameExtractor (MediaMetadataRetriever, no full-video RAM decode, thumb+still cache, aggressive release); video/FrameMatcher (multi-stage: 9x9 mean-normalized luminance-grid coarse scan over the user range, crop-aware verification with 8 offsets + 3 scales handling aspect/crop/letterbox, spatial-correspondence area gate, confidence + low-confidence path); color/ColorMath auto match (per-RGB-channel percentile 2%/98% black/white-point remap + mid-tone gamma, AE-style, NOT histogram matching); color/Levels + color/Curves (AE-model per-channel RGB/R/G/B, Levels in/out points+gamma, Curves draggable graph with master-then-channel evaluation, undo/reset); model/MatchSession non-destructive stack (enable/disable, reorder, duplicate, delete) + real-time still preview on the downscaled extracted frame only; lut/LutGen bakes the stack to .cube (17/33/64 per precision) and HALD CLUT (level 8/12/16 per precision), sRGB gamma-encoded space documented in the .cube header; ui/App M3 Expressive (ForgeBuildTheme, EngineLinearWavyProgress, ExpressiveButton, EngineIcons, Spacing discipline), channel-isolated R/G/B grayscale viewing, proxy flipbook video preview with before/after toggle; Engine SafeSave (SAF ACTION_CREATE_DOCUMENT) for .cube/HALD export \u2014 no DownloadManager; ScreenSecurity FLAG_SECURE per-screen on frame/editor screens; OpenDocument video picking \u2014 zero manifest permissions. Substitution: frame matching uses a luminance-structure descriptor instead of OpenCV keypoints \u2014 heavyweight native CV would violate lightweight-by-default for a 96px structural match; recorded here per the substitution rule."
     },
     {
       "id": "step-6",
       "title": "Validate build config, dispatch release.yml (app_path=apps/anime-lut-match), release anime-lut-match-v1, verify APK asset via Releases API",
-      "status": "pending",
+      "status": "in_progress",
       "notes": ""
     },
     {
