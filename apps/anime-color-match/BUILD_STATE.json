@@ -3,9 +3,9 @@
   "project": "forgebuild-anime-color-match",
   "app_name": "Anime Color Match",
   "package": "com.forgebuild.animecolormatch",
-  "build_complete": false,
+  "build_complete": true,
   "updated_by": "session-1",
-  "current_task": "step-5",
+  "current_task": "none",
   "tasks": [
     {
       "id": "step-1",
@@ -40,14 +40,14 @@
     {
       "id": "step-6",
       "title": "Validate build configuration and release anime-color-match-v1",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Release workflow dispatched via release.yml (app_path=apps/anime-color-match). GitHub Actions run 36610114327 succeeded."
     },
     {
       "id": "step-7",
       "title": "Verify anime-color-match-v1 release + APK live on GitHub Releases API",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Release anime-color-match-v1 verified live on GitHub Releases API. Assets present: app-anime-color-match-v1.apk (188575 bytes) and forgebuild-manifest.json."
     }
   ],
   "history": [
@@ -70,6 +70,10 @@
     {
       "session": "session-1",
       "event": "step-5 done: complete Anime Color Match Android app implemented with Compose and Material 3 Expressive"
+    },
+    {
+      "session": "session-1",
+      "event": "step-6 & step-7 done: anime-color-match-v1 released and verified live on vjumbo264/forgebuild. build_complete: true."
     }
   ],
   "notes": "App designed specifically for AMV and anime video editors. Includes direct image import, range candidate search, live multi-stage automatic color progression visualizer with streaming math logs, AE-style Levels and Curves manual editor, non-destructive layer stack, real-time video playback color grade preview, and standard .cube / HALD CLUT export."
