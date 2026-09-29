@@ -69,7 +69,7 @@ object ColorMath {
         // AE-style gamma: exponent k with (linMed/255)^k == outMed/255; report as AE gamma = 1/k.
         val linMedN = (lin(inMed) / 255f).coerceIn(0.02f, 0.98f)
         val outMedN = (outMed / 255f).coerceIn(0.02f, 0.98f)
-        val k = (ln(outMedN) / ln(linMedN)).coerceIn(0.1, 10.0).toFloat()
+        val k = (ln(outMedN) / ln(linMedN)).coerceIn(0.1f, 10f)
         val lut = FloatArray(256) { i ->
             val t = (lin(i.toFloat()) / 255f).coerceIn(0f, 1f)
             (255f * t.pow(k)).coerceIn(0f, 255f)
