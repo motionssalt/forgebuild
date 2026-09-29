@@ -1,14 +1,20 @@
 package com.forgebuild.animelutmatch.model
 
 import android.graphics.Bitmap
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import com.forgebuild.animelutmatch.color.CurvesEffect
 import com.forgebuild.animelutmatch.color.LevelsEffect
 
 /**
- * One color-match project session: the extracted reference + target frames, the
- * non-destructive correction stack (Auto Match + any number of Levels/Curves), and
- * the precision mode. applyTo() bakes the stack bottom-up; all corrections are
- * reversible until export.
+ * One color-match project session: the extracted reference + target frames (video frames OR
+ * imported images), the non-destructive correction stack (Auto Match + any number of
+ * Levels/Curves), the precision mode, and the live processing log.
+ *
+ * Everything the UI mutates is Compose-observable (SnapshotStateList / MutableState) so edits
+ * re-render instantly, and background rendering always works on a snapshot — mutating the stack
+ * (e.g. deleting an effect) while a preview render is in flight can never crash with a
+ * ConcurrentModificationException.
  */
 class MatchSession(
     var name: String = "anime-lut-match",
@@ -42,7 +48,13 @@ class MatchSession(
         }
     }
 
-    val stack = mutableListOf<Effect>()
+    /**
+     * Observable non-destructive stack. SnapshotStateList is safe to iterate during composition
+     * and safe against concurrent mutation (snapshot isolation) — this is the fix for the
+     * effect-delete crash.
+     */
+    val stack = mutableStateListOf<Effect>()
+
     var referenceFrame: Bitmap? = null
     var targetFrame: Bitmap? = null
     /** Crop rect (left,top,right,bottom) into the target frame matching the reference framing. */
@@ -50,16 +62,27 @@ class MatchSession(
     var matchConfidence: Float = 0f
     var matchRange: Pair<Long, Long>? = null
 
-    var revision: Int = 0
-        private set
+    /** Observable revision counter: every touch() re-renders previews and re-reads controls. */
+    private val revisionState = mutableIntStateOf(0)
+    val revision: Int get() = revisionState.intValue
 
-    fun touch() { revision++ }
+    fun touch() { revisionState.intValue++ }
+
+    /** Live processing log (auto mode, imports, matching), newest at end, capped, observable. */
+    val log = mutableStateListOf<String>()
+
+    fun logLine(msg: String) {
+        while (log.size >= 200) log.removeAt(0)
+        log.add(msg)
+    }
+
+    /** Enabled effects as a detached snapshot for background rendering. */
+    fun enabledEffects(): List<Effect> = stack.filter { it.enabled }
 
     /** Bake the enabled stack at (r,g,b) 0..255 -> corrected rgb 0..255. */
     fun applyTo(r0: Float, g0: Float, b0: Float): FloatArray {
         var r = r0; var g = g0; var b = b0
-        for (e in stack) {
-            if (!e.enabled) continue
+        for (e in enabledEffects()) {
             val out = when (e) {
                 is Effect.AutoMatch -> e.map(r, g, b)
                 is Effect.Levels -> e.fx.map(r, g, b)
@@ -82,5 +105,21 @@ class MatchSession(
         val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         out.setPixels(px, 0, w, 0, 0, w, h)
         return out
+    }
+
+    /**
+     * Full reset: importing new media starts a clean project (operator requirement — leaving the
+     * page and importing new resources must never resurrect the previous settings).
+     */
+    fun reset() {
+        stack.clear()
+        referenceFrame = null
+        targetFrame = null
+        targetCrop = null
+        matchConfidence = 0f
+        matchRange = null
+        log.clear()
+        precision = Precision.STANDARD
+        touch()
     }
 }

@@ -98,6 +98,7 @@ object FrameMatcher {
         endMs: Long,
         stepMs: Long = 500L,
         onProgress: ((Float) -> Unit)? = null,
+        onLog: ((String) -> Unit)? = null,
     ): Result? {
         val refSmall = Bitmap.createScaledBitmap(ref, 96, (96f * ref.height / ref.width).toInt().coerceAtLeast(1), true)
         val refSig = lumGrid(refSmall, 9, 9)
@@ -116,9 +117,11 @@ object FrameMatcher {
             done++; onProgress?.invoke(done * 0.7f / total)
             t += stepMs
         }
-        if (cands.isEmpty()) return null
+        if (cands.isEmpty()) { onLog?.invoke("No decodable frames in the range — search aborted"); return null }
+        onLog?.invoke("Coarse scan complete: ${cands.size} candidates, best structural distance %.3f".format(cands.minOf { it.coarse }))
 
         // Stage 3: verify top-5 with crop-aware re-scoring (spatial correspondence)
+        onLog?.invoke("Verifying top candidates with crop-aware re-scoring…")
         val top = cands.sortedBy { it.coarse }.take(5)
         var best: Result? = null; var vi = 0
         for (c in top) {
@@ -130,6 +133,9 @@ object FrameMatcher {
             val conf = (1f - (score / 0.35f).coerceIn(0f, 1f)) * if (areaFrac < 0.4f) 0.5f else 1f
             if (best == null || conf > best!!.confidence) best = Result(c.t, conf, crop)
             vi++; onProgress?.invoke(0.7f + 0.3f * vi / top.size)
+        }
+        best?.let {
+            onLog?.invoke("Best match at %.1fs (confidence %.0f%%)".format(it.timeMs / 1000.0, it.confidence * 100))
         }
         return best
     }

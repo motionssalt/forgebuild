@@ -6,10 +6,13 @@ import android.app.Activity
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -23,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.forgebuild.animelutmatch.color.ColorMath
 import com.forgebuild.animelutmatch.color.CurvesEffect
+import com.forgebuild.animelutmatch.media.MediaSource
 import com.forgebuild.animelutmatch.model.MatchSession
 import com.forgebuild.animelutmatch.video.FrameMatcher
 import com.forgebuild.animelutmatch.video.VideoFrameExtractor
@@ -34,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlin.math.roundToInt
 
 sealed interface Screen {
@@ -72,14 +77,31 @@ private fun applyCrop(b: Bitmap, crop: IntArray?): Bitmap {
     return Bitmap.createBitmap(b, l, t, w, h)
 }
 
+/** Apply partial per-channel LUTs to a still (live staged preview while Auto Match runs). */
+private fun applyLuts(src: Bitmap, luts: Array<FloatArray>): Bitmap {
+    val w = src.width; val h = src.height
+    val px = IntArray(w * h); src.getPixels(px, 0, w, 0, 0, w, h)
+    for (i in px.indices) {
+        val c = px[i]
+        val r = luts[0][c shr 16 and 0xff].toInt().coerceIn(0, 255)
+        val g = luts[1][c shr 8 and 0xff].toInt().coerceIn(0, 255)
+        val b = luts[2][c and 0xff].toInt().coerceIn(0, 255)
+        px[i] = (0xff shl 24) or (r shl 16) or (g shl 8) or b
+    }
+    val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    out.setPixels(px, 0, w, 0, 0, w, h)
+    return out
+}
+
 @Composable
 fun App(
     session: MatchSession,
     screen: Screen,
     onScreen: (Screen) -> Unit,
-    refExtractor: VideoFrameExtractor?,
-    tgtExtractor: VideoFrameExtractor?,
-    onPickVideo: (Boolean) -> Unit,
+    refSource: MediaSource?,
+    tgtSource: MediaSource?,
+    onPickMedia: (Boolean) -> Unit,
+    onNewProject: () -> Unit,
     onExportCube: () -> Unit,
     onExportHald: () -> Unit,
 ) {
@@ -102,14 +124,16 @@ fun App(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (screen) {
-                Screen.Home -> HomeScreen(onPickVideo, refExtractor != null, tgtExtractor != null, onScreen)
-                Screen.RefFrame -> FramePickScreen("Reference frame", refExtractor, onScreen) { ms, bmp ->
-                    session.referenceFrame = bmp; session.touch(); onScreen(Screen.Home)
+                Screen.Home -> HomeScreen(onPickMedia, refSource, tgtSource, onNewProject, onScreen)
+                Screen.RefFrame -> FramePickScreen("Reference frame", refSource) { _, bmp ->
+                    session.referenceFrame = bmp
+                    session.logLine("Reference frame locked in (${bmp.width}×${bmp.height})")
+                    session.touch(); onScreen(Screen.Home)
                 }
-                Screen.TgtFrame -> TargetFrameScreen(tgtExtractor, session, onScreen)
-                Screen.Matching -> MatchingScreen(tgtExtractor, session, onScreen)
+                Screen.TgtFrame -> TargetFrameScreen(tgtSource, session, onScreen)
+                Screen.Matching -> MatchingScreen((tgtSource as? MediaSource.Video)?.extractor, session, onScreen)
                 Screen.Editor -> EditorScreen(session, onScreen, onExportCube, onExportHald)
-                Screen.Preview -> PreviewScreen(session, tgtExtractor, onScreen)
+                Screen.Preview -> PreviewScreen(session, tgtSource, onScreen)
             }
         }
     }
@@ -117,9 +141,10 @@ fun App(
 
 @Composable
 private fun HomeScreen(
-    onPickVideo: (Boolean) -> Unit,
-    hasRef: Boolean,
-    hasTgt: Boolean,
+    onPickMedia: (Boolean) -> Unit,
+    refSource: MediaSource?,
+    tgtSource: MediaSource?,
+    onNewProject: () -> Unit,
     onScreen: (Screen) -> Unit,
 ) {
     Column(
@@ -128,25 +153,38 @@ private fun HomeScreen(
     ) {
         Text("Color Match", style = MaterialTheme.typography.headlineMedium)
         Text(
-            "Copy the color grade from a reference edit onto your footage and export it as a .cube or HALD LUT.",
+            "Copy the color grade from a reference edit onto your footage and export it as a .cube or HALD LUT. Video or still image on either side.",
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Project setup", style = MaterialTheme.typography.titleMedium)
-                ExpressiveButton(onClick = { onPickVideo(true) }, modifier = Modifier.fillMaxWidth()) {
+                ExpressiveButton(onClick = { onPickMedia(true) }, modifier = Modifier.fillMaxWidth()) {
                     Icon(EngineIcons.Add, null); Spacer(Modifier.width(8.dp))
-                    Text(if (hasRef) "Replace reference video" else "Import reference video")
+                    Text(if (refSource != null) "Replace reference" else "Import reference video or image")
+                }
+                refSource?.let {
+                    Text("Reference: ${it.describe()}", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 ExpressiveButton(
-                    onClick = { onPickVideo(false) }, enabled = hasRef, modifier = Modifier.fillMaxWidth(),
+                    onClick = { onPickMedia(false) }, enabled = refSource != null, modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(EngineIcons.Add, null); Spacer(Modifier.width(8.dp))
-                    Text(if (hasTgt) "Replace target video" else "Import target video")
+                    Text(if (tgtSource != null) "Replace target" else "Import target video or image")
                 }
-                if (hasRef && hasTgt) {
+                tgtSource?.let {
+                    Text("Target: ${it.describe()}", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (refSource != null && tgtSource != null) {
                     Button(onClick = { onScreen(Screen.Editor) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Open color editor")
+                    }
+                }
+                if (refSource != null || tgtSource != null) {
+                    OutlinedButton(onClick = onNewProject, modifier = Modifier.fillMaxWidth()) {
+                        Text("Start new project (clear everything)")
                     }
                 }
             }
@@ -155,10 +193,10 @@ private fun HomeScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Workflow", style = MaterialTheme.typography.titleMedium)
                 listOf(
-                    "1. Import the edit that has the color correction you want",
-                    "2. Pick the exact reference frame",
-                    "3. Import your footage; pick the matching frame or search a range",
-                    "4. Auto Match, then refine with Levels / Curves (stackable)",
+                    "1. Import the edit or still that has the color correction you want",
+                    "2. Pick the exact reference frame (or use the imported image as-is)",
+                    "3. Import your footage/image; pick the matching frame or search a range",
+                    "4. Auto Match (watch the live log), then refine with Levels / Curves",
                     "5. Preview, then export .cube / HALD LUT",
                 ).forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
@@ -169,11 +207,34 @@ private fun HomeScreen(
 @Composable
 private fun FramePickScreen(
     title: String,
-    extractor: VideoFrameExtractor?,
-    onScreen: (Screen) -> Unit,
+    source: MediaSource?,
     onPicked: (Long, Bitmap) -> Unit,
 ) {
-    if (extractor == null) { Text("No video imported"); return }
+    when (source) {
+        null -> Text("Nothing imported yet")
+        is MediaSource.Image -> {
+            Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Box(Modifier.fillMaxWidth().height(320.dp), contentAlignment = Alignment.Center) {
+                    Image(source.bitmap.asImageBitmap(), null, modifier = Modifier.fillMaxHeight())
+                }
+                Text("Still image imported — it is used as the frame directly.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = { onPicked(0L, source.bitmap) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Use this image")
+                }
+            }
+        }
+        is MediaSource.Video -> VideoFramePick(title, source.extractor, onPicked)
+    }
+}
+
+@Composable
+private fun VideoFramePick(
+    title: String,
+    extractor: VideoFrameExtractor,
+    onPicked: (Long, Bitmap) -> Unit,
+) {
     var timeMs by remember { mutableStateOf(extractor.durationMs / 2) }
     var frame by remember { mutableStateOf<Bitmap?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -222,37 +283,49 @@ private fun FramePickScreen(
 
 @Composable
 private fun TargetFrameScreen(
-    extractor: VideoFrameExtractor?,
+    source: MediaSource?,
     session: MatchSession,
     onScreen: (Screen) -> Unit,
 ) {
-    if (extractor == null) { Text("No video imported"); return }
-    var mode by remember { mutableStateOf(0) } // 0 exact, 1 range
-    var startMs by remember { mutableStateOf(0L) }
-    var endMs by remember { mutableStateOf(extractor.durationMs) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Target frame", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text("Exact frame") })
-            FilterChip(selected = mode == 1, onClick = { mode = 1 }, label = { Text("Search range") })
+    when (source) {
+        null -> Text("No target imported yet")
+        is MediaSource.Image -> FramePickScreen("Target frame", source) { _, bmp ->
+            session.targetFrame = bmp; session.targetCrop = null; session.matchConfidence = 1f
+            session.logLine("Target image locked in (${bmp.width}×${bmp.height})")
+            session.touch(); onScreen(Screen.Editor)
         }
-        if (mode == 0) {
-            FramePickScreen("Pick the exact corresponding frame", extractor, onScreen) { ms, bmp ->
-                session.targetFrame = bmp; session.targetCrop = null; session.matchConfidence = 1f
-                session.touch(); onScreen(Screen.Editor)
-            }
-        } else {
-            Text("Search start: ${startMs / 1000.0}s", style = MaterialTheme.typography.labelLarge)
-            Slider(value = startMs.toFloat(), onValueChange = { startMs = it.toLong().coerceAtMost(endMs) },
-                valueRange = 0f..extractor.durationMs.toFloat().coerceAtLeast(1f))
-            Text("Search end: ${endMs / 1000.0}s", style = MaterialTheme.typography.labelLarge)
-            Slider(value = endMs.toFloat(), onValueChange = { endMs = it.toLong().coerceAtLeast(startMs) },
-                valueRange = 0f..extractor.durationMs.toFloat().coerceAtLeast(1f))
-            Button(onClick = {
-                session.matchRange = startMs to endMs
-                onScreen(Screen.Matching)
-            }, modifier = Modifier.fillMaxWidth()) {
-                Icon(EngineIcons.Search, null); Spacer(Modifier.width(8.dp)); Text("Find matching frame")
+        is MediaSource.Video -> {
+            val extractor = source.extractor
+            var mode by remember { mutableStateOf(0) } // 0 exact, 1 range
+            var startMs by remember { mutableStateOf(0L) }
+            var endMs by remember { mutableStateOf(extractor.durationMs) }
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Target frame", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text("Exact frame") })
+                    FilterChip(selected = mode == 1, onClick = { mode = 1 }, label = { Text("Search range") })
+                }
+                if (mode == 0) {
+                    VideoFramePick("Pick the exact corresponding frame", extractor) { ms, bmp ->
+                        session.targetFrame = bmp; session.targetCrop = null; session.matchConfidence = 1f
+                        session.logLine("Target frame picked at ${ms / 1000.0}s")
+                        session.touch(); onScreen(Screen.Editor)
+                    }
+                } else {
+                    Text("Search start: ${startMs / 1000.0}s", style = MaterialTheme.typography.labelLarge)
+                    Slider(value = startMs.toFloat(), onValueChange = { startMs = it.toLong().coerceAtMost(endMs) },
+                        valueRange = 0f..extractor.durationMs.toFloat().coerceAtLeast(1f))
+                    Text("Search end: ${endMs / 1000.0}s", style = MaterialTheme.typography.labelLarge)
+                    Slider(value = endMs.toFloat(), onValueChange = { endMs = it.toLong().coerceAtLeast(startMs) },
+                        valueRange = 0f..extractor.durationMs.toFloat().coerceAtLeast(1f))
+                    Button(onClick = {
+                        session.matchRange = startMs to endMs
+                        session.logLine("Frame search queued: ${startMs / 1000.0}s – ${endMs / 1000.0}s")
+                        onScreen(Screen.Matching)
+                    }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(EngineIcons.Search, null); Spacer(Modifier.width(8.dp)); Text("Find matching frame")
+                    }
+                }
             }
         }
     }
@@ -272,11 +345,13 @@ private fun MatchingScreen(
         if (extractor == null || ref == null) { done = true; return@LaunchedEffect }
         val (s, e) = session.matchRange ?: (0L to extractor.durationMs)
         result = withContext(Dispatchers.Default) {
-            FrameMatcher.findMatch(extractor, downscale(ref, 256), s, e) { progress = it }
+            FrameMatcher.findMatch(extractor, downscale(ref, 256), s, e,
+                onProgress = { progress = it },
+                onLog = { session.logLine(it) })
         }
         done = true
     }
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Frame matching", style = MaterialTheme.typography.titleMedium)
         if (!done) {
             EngineLinearWavyProgress(progress = { progress }, modifier = Modifier.fillMaxWidth())
@@ -312,6 +387,33 @@ private fun MatchingScreen(
                 }
             }
         }
+        LogCard(session)
+    }
+}
+
+/** Live processing log — observable list, auto-follows the newest line. */
+@Composable
+private fun LogCard(session: MatchSession, maxLines: Int = 6) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Processing log", style = MaterialTheme.typography.titleSmall)
+            val lines = session.log.toList().takeLast(maxLines)
+            if (lines.isEmpty()) {
+                Text("Nothing yet — imports, frame matching and Auto Match report here.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                val listState = rememberLazyListState()
+                LaunchedEffect(session.log.size) {
+                    if (session.log.isNotEmpty()) listState.animateScrollToItem(session.log.size - 1)
+                }
+                LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().height(132.dp)) {
+                    items(lines) {
+                        Text(it, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -322,18 +424,22 @@ private fun EditorScreen(
     onExportCube: () -> Unit,
     onExportHald: () -> Unit,
 ) {
+    // Reading revision here makes EVERY control live: any session.touch() recomposes the editor.
+    val rev = session.revision
     var precision by remember { mutableStateOf(session.precision) }
     var channel by remember { mutableStateOf(0) }     // view channel 0..3
     var fxChannel by remember { mutableStateOf(0) }   // effect channel 0..3
-    var fxTab by remember { mutableStateOf(0) }       // 0 Levels, 1 Curves
+    var selectedFx by remember { mutableStateOf<Int?>(null) }
     var autoBusy by remember { mutableStateOf(false) }
+    var autoStage by remember { mutableStateOf<Bitmap?>(null) }
+    var autoCaption by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
-    // Base still for real-time preview (cropped + downscaled; never touches the source video)
+    // Base still for real-time preview (cropped + downscaled; never touches the source media)
     val base = remember(session.targetFrame, session.targetCrop) {
         session.targetFrame?.let { downscale(applyCrop(it, session.targetCrop), 512) }
     }
-    val rendered by produceState<Bitmap?>(null, base, session.revision) {
+    val rendered by produceState<Bitmap?>(null, base, rev) {
         value = base?.let { b -> withContext(Dispatchers.Default) { session.renderPreview(b) } }
     }
 
@@ -372,78 +478,126 @@ private fun EditorScreen(
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        // Auto Match — staged, visible, logged per channel (operator requirement)
         ExpressiveButton(
             onClick = {
                 scope.launch {
-                    autoBusy = true
-                    withContext(Dispatchers.Default) {
-                        val ref = session.referenceFrame?.let { downscale(it, 256) }
-                        val tgt = base
-                        if (ref != null && tgt != null) {
-                            val refPx = IntArray(ref.width * ref.height).also { ref.getPixels(it, 0, ref.width, 0, 0, ref.width, ref.height) }
-                            val tgtScaled = Bitmap.createScaledBitmap(tgt, ref.width, ref.height, true)
-                            val tgtPx = IntArray(tgtScaled.width * tgtScaled.height).also { tgtScaled.getPixels(it, 0, tgtScaled.width, 0, 0, tgtScaled.width, tgtScaled.height) }
-                            val luts = ColorMath.autoTransfer(ColorMath.samplePixels(refPx), ColorMath.samplePixels(tgtPx))
-                            session.stack.removeAll { it is MatchSession.Effect.AutoMatch }
-                            session.stack.add(0, MatchSession.Effect.AutoMatch(luts))
-                            session.touch()
-                        }
+                    autoBusy = true; autoStage = null
+                    session.stack.removeAll { it is MatchSession.Effect.AutoMatch }
+                    session.logLine("Auto Match started — analyzing reference vs target per channel")
+                    val ref = session.referenceFrame?.let { downscale(it, 256) }
+                    val tgt = base
+                    if (ref == null || tgt == null) {
+                        session.logLine("Auto Match aborted: need both a reference and a target frame")
+                        autoBusy = false; return@launch
                     }
-                    autoBusy = false
+                    val sampled = withContext(Dispatchers.Default) {
+                        val refPx = IntArray(ref.width * ref.height).also { ref.getPixels(it, 0, ref.width, 0, 0, ref.width, ref.height) }
+                        val tgtScaled = Bitmap.createScaledBitmap(tgt, ref.width, ref.height, true)
+                        val tgtPx = IntArray(tgtScaled.width * tgtScaled.height).also { tgtScaled.getPixels(it, 0, tgtScaled.width, 0, 0, tgtScaled.width, tgtScaled.height) }
+                        ColorMath.samplePixels(refPx) to ColorMath.samplePixels(tgtPx)
+                    }
+                    session.logLine("Sampled ${sampled.first.first.size} pixels per channel (stride sampling)")
+                    val chNames = listOf("Red", "Green", "Blue")
+                    val luts = arrayOf(ColorMath.identityLut(), ColorMath.identityLut(), ColorMath.identityLut())
+                    for (c in 0..2) {
+                        autoCaption = "Analyzing ${chNames[c]} channel…"
+                        val rep = withContext(Dispatchers.Default) {
+                            val tgtCh = when (c) { 0 -> sampled.second.first; 1 -> sampled.second.second; else -> sampled.second.third }
+                            val refCh = when (c) { 0 -> sampled.first.first; 1 -> sampled.first.second; else -> sampled.first.third }
+                            ColorMath.channelCurve(tgtCh, refCh, chNames[c])
+                        }
+                        luts[c] = rep.lut
+                        session.logLine(String.format(Locale.US,
+                            "%s: black %.0f→%.0f · white %.0f→%.0f · gamma %.2f",
+                            rep.name, rep.inBlack, rep.outBlack, rep.inWhite, rep.outWhite, rep.gamma))
+                        // live stage: show the partial correction on the target still
+                        autoStage = withContext(Dispatchers.Default) { applyLuts(tgt, luts) }
+                        session.logLine("${chNames[c]} channel adjusted")
+                        delay(350) // keep each stage perceptible instead of an instant jump
+                    }
+                    session.stack.add(0, MatchSession.Effect.AutoMatch(luts))
+                    session.touch()
+                    session.logLine("Auto Match applied — added to the correction stack")
+                    autoCaption = ""; autoBusy = false
                 }
             },
-            busy = autoBusy, enabled = session.referenceFrame != null && base != null,
+            busy = autoBusy, enabled = !autoBusy && session.referenceFrame != null && base != null,
             modifier = Modifier.fillMaxWidth(),
         ) { Icon(EngineIcons.Bolt, null); Spacer(Modifier.width(8.dp)); Text("Auto Match") }
 
-        // Correction stack (non-destructive: toggle / reorder / duplicate / delete)
+        // Staged auto-match preview (visible per-channel adjustment before the result lands)
+        autoStage?.let {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(autoCaption, style = MaterialTheme.typography.labelLarge)
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Image(it.asImageBitmap(), "Auto Match stage", modifier = Modifier.fillMaxHeight())
+                }
+            }
+        }
+
+        LogCard(session)
+
+        // Correction stack (non-destructive: toggle / reorder / duplicate / delete; tap to edit)
         Text("Correction stack", style = MaterialTheme.typography.titleSmall)
-        session.stack.forEachIndexed { idx, e ->
+        val stackSnapshot = session.stack.toList()
+        stackSnapshot.forEachIndexed { idx, e ->
             val label = when (e) {
                 is MatchSession.Effect.AutoMatch -> "Auto Match"
                 is MatchSession.Effect.Levels -> "Levels ${idx + 1}"
                 is MatchSession.Effect.Curves -> "Curves ${idx + 1}"
             }
-            Card(Modifier.fillMaxWidth()) {
+            val isSelected = (selectedFx ?: (stackSnapshot.size - 1)) == idx
+            Card(
+                Modifier.fillMaxWidth().clickable { selectedFx = idx },
+                colors = if (isSelected) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                else CardDefaults.cardColors(),
+            ) {
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = e.enabled, onCheckedChange = { e.enabled = it; session.touch() })
                     Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    IconButton(onClick = { if (idx > 0) { session.stack.add(idx - 1, session.stack.removeAt(idx)); session.touch() } }) { Text("↑") }
-                    IconButton(onClick = { if (idx < session.stack.size - 1) { session.stack.add(idx + 1, session.stack.removeAt(idx)); session.touch() } }) { Text("↓") }
+                    IconButton(onClick = { if (idx > 0) { session.stack.add(idx - 1, session.stack.removeAt(idx)); selectedFx = idx - 1; session.touch() } }) { Text("↑") }
+                    IconButton(onClick = { if (idx < session.stack.size - 1) { session.stack.add(idx + 1, session.stack.removeAt(idx)); selectedFx = idx + 1; session.touch() } }) { Text("↓") }
                     IconButton(onClick = { session.stack.add(idx + 1, e.copyEffect()); session.touch() }) { Icon(EngineIcons.Add, "Duplicate") }
-                    if (e !is MatchSession.Effect.AutoMatch) {
-                        IconButton(onClick = { session.stack.removeAt(idx); session.touch() }) { Text("✕") }
-                    }
+                    IconButton(onClick = {
+                        session.stack.removeAt(idx)
+                        selectedFx = null
+                        session.logLine("Removed $label from the stack")
+                        session.touch()
+                    }) { Text("✕") }
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { session.stack.add(MatchSession.Effect.Levels()); session.touch() }) { Text("+ Levels") }
-            OutlinedButton(onClick = { session.stack.add(MatchSession.Effect.Curves()); session.touch() }) { Text("+ Curves") }
+            OutlinedButton(onClick = {
+                session.stack.add(MatchSession.Effect.Levels()); selectedFx = session.stack.size - 1; session.touch()
+            }) { Text("+ Levels") }
+            OutlinedButton(onClick = {
+                session.stack.add(MatchSession.Effect.Curves()); selectedFx = session.stack.size - 1; session.touch()
+            }) { Text("+ Curves") }
         }
 
-        // Levels / Curves editor bound to the last effect of the selected type
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = fxTab == 0, onClick = { fxTab = 0 }, label = { Text("Levels") })
-            FilterChip(selected = fxTab == 1, onClick = { fxTab = 1 }, label = { Text("Curves") })
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CH_NAMES.forEachIndexed { i, n ->
-                FilterChip(selected = fxChannel == i, onClick = { fxChannel = i }, label = { Text(n) })
+        // Editor for the tapped effect (defaults to the newest); channel selector applies to both
+        val selIdx = selectedFx?.takeIf { it in stackSnapshot.indices } ?: (stackSnapshot.size - 1).takeIf { stackSnapshot.isNotEmpty() }
+        val selected = selIdx?.let { stackSnapshot.getOrNull(it) }
+        if (selected != null && selected !is MatchSession.Effect.AutoMatch) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CH_NAMES.forEachIndexed { i, n ->
+                    FilterChip(selected = fxChannel == i, onClick = { fxChannel = i }, label = { Text(n) })
+                }
             }
         }
-        if (fxTab == 0) {
-            val fx = session.stack.filterIsInstance<MatchSession.Effect.Levels>().lastOrNull()?.fx
-            if (fx == null) Text("Add a Levels effect to edit it.", style = MaterialTheme.typography.bodySmall)
-            else LevelsEditor(fx, fxChannel, session)
-        } else {
-            val fx = session.stack.filterIsInstance<MatchSession.Effect.Curves>().lastOrNull()?.fx
-            if (fx == null) Text("Add a Curves effect to edit it.", style = MaterialTheme.typography.bodySmall)
-            else CurvesEditor(fx, fxChannel, session)
+        when (selected) {
+            null -> Text("Add a Levels or Curves effect to edit it.", style = MaterialTheme.typography.bodySmall)
+            is MatchSession.Effect.AutoMatch -> Text(
+                "Auto Match is parameter-free. To refine the result, add Levels or Curves on top — or delete it and run Auto Match again.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            is MatchSession.Effect.Levels -> LevelsEditor(selected.fx, fxChannel, session)
+            is MatchSession.Effect.Curves -> CurvesEditor(selected.fx, fxChannel, session)
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = { onScreen(Screen.Preview) }) { Text("Preview video") }
+            OutlinedButton(onClick = { onScreen(Screen.Preview) }) { Text("Preview") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = onExportCube) { Text("Export .cube") }
@@ -500,6 +654,7 @@ private fun CurvesEditor(fx: CurvesEffect, channel: Int, session: MatchSession) 
                             pts.add(x to y); pts.sortBy { it.first }; best = pts.indexOfFirst { it.first == x }
                         }
                         dragIdx = best
+                        fx.invalidate(); session.touch()
                     },
                     onDrag = { change, _ ->
                         if (dragIdx in 1 until pts.size - 1) {
@@ -513,22 +668,25 @@ private fun CurvesEditor(fx: CurvesEffect, channel: Int, session: MatchSession) 
                 )
             },
         ) {
-            val w = this.size.width; val h = this.size.height
-            for (i in 0..4) {
-                drawLine(grid, Offset(w * i / 4, 0f), Offset(w * i / 4, h))
-                drawLine(grid, Offset(0f, h * i / 4), Offset(w, h * i / 4))
+            val rev = session.revision // draw-lambda state read: any touch() invalidates the graph
+            if (rev >= 0) {
+                val w = this.size.width; val h = this.size.height
+                for (i in 0..4) {
+                    drawLine(grid, Offset(w * i / 4, 0f), Offset(w * i / 4, h))
+                    drawLine(grid, Offset(0f, h * i / 4), Offset(w, h * i / 4))
+                }
+                drawLine(diag, Offset(0f, h), Offset(w, 0f))
+                val sorted = pts.sortedBy { it.first }
+                for (i in 0 until sorted.size - 1) {
+                    drawLine(
+                        curveColor,
+                        Offset(sorted[i].first / 255f * w, h - sorted[i].second / 255f * h),
+                        Offset(sorted[i + 1].first / 255f * w, h - sorted[i + 1].second / 255f * h),
+                        strokeWidth = 4f,
+                    )
+                }
+                sorted.forEach { drawCircle(curveColor, 7f, Offset(it.first / 255f * w, h - it.second / 255f * h)) }
             }
-            drawLine(diag, Offset(0f, h), Offset(w, 0f))
-            val sorted = pts.sortedBy { it.first }
-            for (i in 0 until sorted.size - 1) {
-                drawLine(
-                    curveColor,
-                    Offset(sorted[i].first / 255f * w, h - sorted[i].second / 255f * h),
-                    Offset(sorted[i + 1].first / 255f * w, h - sorted[i + 1].second / 255f * h),
-                    strokeWidth = 4f,
-                )
-            }
-            sorted.forEach { drawCircle(curveColor, 7f, Offset(it.first / 255f * w, h - it.second / 255f * h)) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = {
@@ -544,39 +702,50 @@ private fun CurvesEditor(fx: CurvesEffect, channel: Int, session: MatchSession) 
 }
 
 @Composable
-private fun PreviewScreen(session: MatchSession, extractor: VideoFrameExtractor?, onScreen: (Screen) -> Unit) {
-    // Proxy video preview: corrected thumbnail strip flipbook (never re-decodes the whole video).
+private fun PreviewScreen(session: MatchSession, source: MediaSource?, onScreen: (Screen) -> Unit) {
+    // Proxy preview: corrected thumbnail-strip flipbook for video; before/after still for images.
     var playing by remember { mutableStateOf(false) }
     var after by remember { mutableStateOf(true) }
     var pos by remember { mutableStateOf(0) }
     val frames = remember { mutableStateListOf<Pair<Bitmap, Bitmap>>() } // before, after
-    LaunchedEffect(extractor, session.revision) {
-        if (extractor == null) return@LaunchedEffect
+    LaunchedEffect(source, session.revision) {
         frames.clear()
-        withContext(Dispatchers.Default) {
-            val n = 24
-            for (i in 0 until n) {
-                val t = extractor.durationMs * i / (n - 1)
-                val f = extractor.scaledFrameAt(t, 384) ?: continue
+        when (source) {
+            is MediaSource.Video -> withContext(Dispatchers.Default) {
+                val extractor = source.extractor
+                val n = 24
+                for (i in 0 until n) {
+                    val t = extractor.durationMs * i / (n - 1)
+                    val f = extractor.scaledFrameAt(t, 384) ?: continue
+                    val corrected = session.renderPreview(f.copy(f.config ?: Bitmap.Config.ARGB_8888, false))
+                    withContext(Dispatchers.Main) { frames.add(f to corrected) }
+                }
+            }
+            is MediaSource.Image -> withContext(Dispatchers.Default) {
+                val f = downscale(source.bitmap, 512)
                 val corrected = session.renderPreview(f.copy(f.config ?: Bitmap.Config.ARGB_8888, false))
                 withContext(Dispatchers.Main) { frames.add(f to corrected) }
             }
+            null -> Unit
         }
     }
     LaunchedEffect(playing, frames.size) {
-        while (playing && frames.isNotEmpty()) { delay(200); pos = (pos + 1) % frames.size }
+        while (playing && frames.size > 1) { delay(200); pos = (pos + 1) % frames.size }
     }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Video preview (proxy)", style = MaterialTheme.typography.titleMedium)
+        Text(if (source is MediaSource.Image) "Image preview" else "Video preview (proxy)", style = MaterialTheme.typography.titleMedium)
         Box(Modifier.fillMaxWidth().height(280.dp), contentAlignment = Alignment.Center) {
             if (frames.isEmpty()) EngineLinearWavyProgress()
             else Image((if (after) frames[pos].second else frames[pos].first).asImageBitmap(), null, modifier = Modifier.fillMaxHeight())
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { playing = !playing }, enabled = frames.isNotEmpty()) { Text(if (playing) "Pause" else "Play") }
-            FilterChip(selected = after, onClick = { after = !after }, label = { Text(if (after) "AFTER" else "BEFORE") })
+            if (frames.size > 1) {
+                Button(onClick = { playing = !playing }) { Text(if (playing) "Pause" else "Play") }
+            }
+            FilterChip(selected = after, onClick = { after = !after }, enabled = frames.isNotEmpty(),
+                label = { Text(if (after) "AFTER" else "BEFORE") })
         }
-        if (frames.isNotEmpty()) {
+        if (frames.size > 1) {
             Slider(value = pos.toFloat(), onValueChange = { pos = it.toInt().coerceIn(0, frames.size - 1) },
                 valueRange = 0f..(frames.size - 1).toFloat())
         }

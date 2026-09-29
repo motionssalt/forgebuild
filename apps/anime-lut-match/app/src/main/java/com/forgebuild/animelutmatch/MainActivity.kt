@@ -11,6 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.forgebuild.animelutmatch.lut.LutGen
+import com.forgebuild.animelutmatch.media.ImageLoader
+import com.forgebuild.animelutmatch.media.MediaSource
 import com.forgebuild.animelutmatch.model.MatchSession
 import com.forgebuild.animelutmatch.ui.App
 import com.forgebuild.animelutmatch.ui.Screen
@@ -24,21 +26,40 @@ class MainActivity : ComponentActivity() {
     val session = MatchSession()
     var screen by mutableStateOf<Screen>(Screen.Home)
 
-    var refExtractor by mutableStateOf<VideoFrameExtractor?>(null)
-    var tgtExtractor by mutableStateOf<VideoFrameExtractor?>(null)
+    var refSource by mutableStateOf<MediaSource?>(null)
+    var tgtSource by mutableStateOf<MediaSource?>(null)
     private var pickIsReference = true
 
     /** Bytes producer for the export the user just requested; consumed by the SAF callback. */
     private var pendingSave: (() -> ByteArray)? = null
 
-    private val videoPicker =
+    private val mediaPicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri == null) return@registerForActivityResult
-            val ex = VideoFrameExtractor(this, uri)
-            if (ex.durationMs <= 0 || ex.width <= 0) { ex.release(); return@registerForActivityResult }
-            if (pickIsReference) { refExtractor?.release(); refExtractor = ex }
-            else { tgtExtractor?.release(); tgtExtractor = ex }
-            screen = if (pickIsReference) Screen.RefFrame else Screen.TgtFrame
+            // Operator requirement: importing new resources starts from clean settings — never
+            // resurrect the previous stack/crop/precision. Sources for the untouched side stay.
+            session.reset()
+            val type = contentResolver.getType(uri).orEmpty()
+            if (type.startsWith("image/")) {
+                val bmp = ImageLoader.decode(this, uri) ?: return@registerForActivityResult
+                val src = MediaSource.Image(bmp)
+                session.logLine("Imported image (${bmp.width}×${bmp.height}) as ${if (pickIsReference) "reference" else "target"}")
+                if (pickIsReference) { refSource?.release(); refSource = src }
+                else { tgtSource?.release(); tgtSource = src }
+                screen = if (pickIsReference) Screen.RefFrame else Screen.TgtFrame
+            } else {
+                val ex = try {
+                    VideoFrameExtractor(this, uri)
+                } catch (_: Exception) { null }
+                if (ex == null || ex.durationMs <= 0 || ex.width <= 0) {
+                    ex?.release(); return@registerForActivityResult
+                }
+                val src = MediaSource.Video(ex)
+                session.logLine("Imported video (${ex.width}×${ex.height}, ${ex.durationMs / 1000.0}s) as ${if (pickIsReference) "reference" else "target"}")
+                if (pickIsReference) { refSource?.release(); refSource = src }
+                else { tgtSource?.release(); tgtSource = src }
+                screen = if (pickIsReference) Screen.RefFrame else Screen.TgtFrame
+            }
         }
 
     // Engine SafeSave (Storage Access Framework) — user picks destination, app writes.
@@ -51,9 +72,17 @@ class MainActivity : ComponentActivity() {
         if (uri != null && bytes != null) SafeSave.writeBytes(this, uri, bytes)
     }
 
-    fun pickVideo(isReference: Boolean) {
+    fun pickMedia(isReference: Boolean) {
         pickIsReference = isReference
-        videoPicker.launch(arrayOf("video/*"))
+        mediaPicker.launch(arrayOf("video/*", "image/*"))
+    }
+
+    /** Fresh project: drop both sources, clear the whole session, back to Home. */
+    fun newProject() {
+        refSource?.release(); refSource = null
+        tgtSource?.release(); tgtSource = null
+        session.reset()
+        screen = Screen.Home
     }
 
     fun exportCube() {
@@ -79,9 +108,10 @@ class MainActivity : ComponentActivity() {
                     session = session,
                     screen = screen,
                     onScreen = { screen = it },
-                    refExtractor = refExtractor,
-                    tgtExtractor = tgtExtractor,
-                    onPickVideo = ::pickVideo,
+                    refSource = refSource,
+                    tgtSource = tgtSource,
+                    onPickMedia = ::pickMedia,
+                    onNewProject = ::newProject,
                     onExportCube = ::exportCube,
                     onExportHald = ::exportHald,
                 )
@@ -90,7 +120,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        refExtractor?.release(); tgtExtractor?.release()
+        refSource?.release(); tgtSource?.release()
         super.onDestroy()
     }
 }
