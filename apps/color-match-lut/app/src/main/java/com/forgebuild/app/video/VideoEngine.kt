@@ -26,13 +26,13 @@ object VideoEngine{
     if(maxDim>0)scaled(r,us,maxDim)
     else try{r.getFrameAtTime(us,MediaMetadataRetriever.OPTION_CLOSEST_SYNC)}catch(e:Exception){null}
   }catch(e:Exception){Log.e(TAG,"frame@$timeMs",e);null}finally{try{r.release()}catch(_:Exception){}}}
-  suspend fun extractThumbnails(context:Context,uri:Uri,info:VideoInfo,count:Int=12,thumbDim:Int=192):List<Pair<Long,Bitmap>>=
+  suspend fun extractThumbnails(context:Context,uri:Uri,info:VideoInfo,count:Int=12,thumbDim:Int=192):List<Pair<Long,Bitmap> >=
     withContext(Dispatchers.IO){val out=ArrayList<Pair<Long,Bitmap>>(count);val r=MediaMetadataRetriever()
     try{r.setDataSource(context,uri);val step=if(count>1)info.durationMs/(count-1).coerceAtLeast(1) else info.durationMs
       for(i in 0 until count){val t=(i*step).coerceIn(0L,info.durationMs)
         scaled(r,t*1000L,thumbDim)?.let{out.add(t to it)}}
     }catch(e:Exception){Log.e(TAG,"thumbs",e)}finally{try{r.release()}catch(_:Exception){}};out}
-  suspend fun scanRange(context:Context,uri:Uri,startMs:Long,endMs:Long,samples:Int=24,dim:Int=160):List<Pair<Long,Bitmap>>=
+  suspend fun scanRange(context:Context,uri:Uri,startMs:Long,endMs:Long,samples:Int=24,dim:Int=160):List<Pair<Long,Bitmap> >=
     withContext(Dispatchers.IO){val lo=minOf(startMs,endMs).coerceAtLeast(0L);val hi=maxOf(startMs,endMs)
     val span=(hi-lo).coerceAtLeast(1L);val n=samples.coerceAtLeast(2);val out=ArrayList<Pair<Long,Bitmap>>(n);val r=MediaMetadataRetriever()
     try{r.setDataSource(context,uri);for(i in 0 until n){val t=lo+(span*i/(n-1))

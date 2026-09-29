@@ -5,7 +5,7 @@ data class Levels(var inBlack:Float=0f,var inWhite:Float=1f,var gamma:Float=1f,v
   fun apply(v:Float):Float{val range=(inWhite-inBlack).coerceAtLeast(1e-5f)
     var x=((v-inBlack)/range).coerceIn(0f,1f);x=x.pow(1f/gamma.coerceAtLeast(0.01f))
     return (outBlack+x*(outWhite-outBlack)).coerceIn(0f,1f)} }
-data class Curves(var points:MutableList<Pair<Float,Float>>=mutableListOf(0f to 0f,1f to 1f),var channel:Channel=Channel.RGB){
+data class Curves(var points:MutableList<Pair<Float,Float> >=mutableListOf(0f to 0f,1f to 1f),var channel:Channel=Channel.RGB){
   fun apply(v:Float):Float{val p=points.sortedBy{it.first};if(p.isEmpty())return v
     if(v<=p.first().first)return p.first().second;if(v>=p.last().first)return p.last().second
     for(i in 0 until p.size-1){val (x0,y0)=p[i];val (x1,y1)=p[i+1]
