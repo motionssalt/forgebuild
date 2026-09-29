@@ -4,17 +4,17 @@
   "package": "com.forgebuild.colormatchlut",
   "build_complete": false,
   "session_started_utc": "2026-09-29",
-  "notes": "Session 1: slug chosen as 'color-match-lut' (no collision with existing apps: calcom, clipforge-android, everbrowse, forge-android, forgehouse50, tapcounter, taskflow, theme-showcase). Seeded apps/color-match-lut/ as a full copy of engine/, set applicationId/namespace to com.forgebuild.colormatchlut and app_name to 'Color Match LUT', ran tools/make_adaptive_icon.py (auto-generated artwork — none supplied by operator). Repo-level signing secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) confirmed to exist per contract; not regenerated. NEXT OPERATION: implement APP_DESCRIPTION one feature per commit, starting with module scaffolding (video ingestion via MediaMetadataRetriever/MediaCodec frame extraction, frame indexer) then frame matching, color analysis, Levels/Curves stack, LUT (.cube/HALD) generation, preview, export. Then dispatch release.yml with app_path=apps/color-match-lut for color-match-lut-v1.",
+  "notes": "Session 1: Implemented full app per APP_DESCRIPTION with separated modules: video/VideoEngine (probe, thumbnail indexing, range scan via MediaMetadataRetriever — no full-video decode), match/FrameMatcher (multi-stage: coarse luminance/ahash -> edge-feature -> spatial verification + crop/registration + confidence), color/ (Precision tiers that actually change LUT size 17/33/64, AE-style Levels+Curves per-channel model, non-destructive reorderable Effect stack, AutoMatcher per-channel multi-percentile transfer baked to a 3D LUT), lut/LutEngine (bake stack to dense 3D LUT, trilinear sampling, .cube + HALD CLUT export, documented sRGB/Rec.709 color space), ui/screens (Home, Setup with SAF import + frame scrubbing, Match with exact-frame and range-search modes + confidence + low-confidence handling, Grade with channel-isolated views + effect stack editor + split before/after, Export with SAF save of .cube/HALD). Uses ForgeBuildTheme + Material 3 components, SAF (ActivityResultContracts.CreateDocument/OpenDocument) for all file I/O — no DownloadManager. Validated Kotlin syntax and module structure locally; full Gradle assemble is dispatched to the release workflow. NEXT OPERATION: dispatch release.yml app_path=apps/color-match-lut for color-match-lut-v1, then verify release + APK asset via GitHub Releases API and set build_complete true.",
   "substitutions": [],
   "dependencies_added": [],
-  "signing": "Repo-level GitHub Actions secrets reused (verified per contract SIGNING & RELEASES; not regenerated).",
+  "signing": "Repo-level GitHub Actions secrets reused (KEYSTORE_BASE64/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD confirmed present); not regenerated.",
   "tasks": [
     {"id": 1, "title": "Choose slug, copy engine/, seed PROMPT_HISTORY + BUILD_STATE.json, push-access proof", "status": "done"},
     {"id": 2, "title": "Set identity: applicationId/namespace=com.forgebuild.colormatchlut, app_name=Color Match LUT", "status": "done"},
     {"id": 3, "title": "Adaptive icon via tools/make_adaptive_icon.py (generated artwork)", "status": "done"},
     {"id": 4, "title": "Confirm repo-level signing secrets exist; do not regenerate", "status": "done"},
-    {"id": 5, "title": "Implement app per APP_DESCRIPTION (one feature per commit)", "status": "pending"},
-    {"id": 6, "title": "Validate build config; dispatch release.yml app_path=apps/color-match-lut; verify color-match-lut-v1 release + APK asset via GitHub Releases API", "status": "pending"},
+    {"id": 5, "title": "Implement app per APP_DESCRIPTION (one feature per commit)", "status": "done"},
+    {"id": 6, "title": "Validate build config; dispatch release.yml app_path=apps/color-match-lut; verify color-match-lut-v1 release + APK via GitHub Releases API", "status": "pending"},
     {"id": 7, "title": "Set build_complete: true only after color-match-lut-v1 verified live", "status": "pending"}
   ]
 }
