@@ -5,7 +5,7 @@
   "package": "com.forgebuild.animecolormatch",
   "build_complete": false,
   "updated_by": "session-1",
-  "current_task": "step-3",
+  "current_task": "step-4",
   "tasks": [
     {
       "id": "step-1",
@@ -28,8 +28,8 @@
     {
       "id": "step-4",
       "title": "Confirm repo-level signing secrets exist",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Confirmed KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD secrets exist in repo vjumbo264/forgebuild. Existing secrets will be reused without regeneration."
     },
     {
       "id": "step-5",
@@ -62,6 +62,10 @@
     {
       "session": "session-1",
       "event": "step-3 done: adaptive icon configured and committed"
+    },
+    {
+      "session": "session-1",
+      "event": "step-4 done: repo signing secrets confirmed"
     }
   ],
   "notes": "App designed specifically for AMV and anime video editors. Includes direct image import, range candidate search, live multi-stage automatic color progression visualizer with streaming math logs, AE-style Levels and Curves manual editor, non-destructive layer stack, real-time video playback color grade preview, and standard .cube / HALD CLUT export."
