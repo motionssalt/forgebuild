@@ -2,7 +2,7 @@ package com.forgebuild.app.match
 import android.graphics.Bitmap;import kotlin.math.abs
 data class MatchResult(val timeMs:Long,val confidence:Float,val frame:Bitmap?,val cropRect:android.graphics.Rect?)
 object FrameMatcher{
-  fun findBest(reference:Bitmap,candidates:List<Pair<Long,Bitmap>>):MatchResult{
+  fun findBest(reference:Bitmap,candidates:List<Pair<Long,Bitmap> >):MatchResult{
     if(candidates.isEmpty())return MatchResult(0L,0f,null,null)
     val ref=Features(reference);var best=MatchResult(0L,0f,null,null);var bestScore=-1f
     for((t,cand) in candidates){val f=Features(cand);val s1=coarseScore(ref,f);if(s1<0.15f)continue

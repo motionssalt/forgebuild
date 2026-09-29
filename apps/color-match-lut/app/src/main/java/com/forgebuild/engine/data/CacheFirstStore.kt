@@ -44,7 +44,7 @@ import java.io.File
  *           fromJson = { FeedItem(it.getString("id"), it.getString("title")) },
  *           fetchRemote = { api.listItems() }          // suspending; may throw
  *       )
- *       val items: StateFlow<List<FeedItem>> = store.state
+ *       val items: StateFlow<List<FeedItem> > = store.state
  *       val refreshing: StateFlow<Boolean> = store.refreshing
  *
  *       fun onScreenOpen() {          // called once per screen open
@@ -70,7 +70,7 @@ open class CacheFirstStore<T>(
 
     private val _state = MutableStateFlow<List<T>>(emptyList())
     /** Current items. Render this directly; it is populated synchronously by [loadFromCache]. */
-    val state: StateFlow<List<T>> = _state
+    val state: StateFlow<List<T> > = _state
 
     private val _refreshing = MutableStateFlow(false)
     /** True while a background refresh is in flight — drive a subtle spinner, never a full-screen loader. */
