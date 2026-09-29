@@ -1,0 +1,52 @@
+{
+  "slug": "anime-lut-match",
+  "project": "forgebuild-anime-lut-match",
+  "build_complete": false,
+  "updated_by": "build-agent",
+  "current_task": "step-2",
+  "tasks": [
+    {
+      "id": "step-1",
+      "title": "Choose slug, create apps/<slug>/ from engine/, seed state + prompt history, push-access proof",
+      "status": "done",
+      "notes": "Slug 'anime-lut-match' chosen (clear kebab-case name; 'anime-color-match' was previously used, released through v2, then deleted by the operator, so it is avoided to prevent any tag/folder collision). Created apps/anime-lut-match/ by copying the full engine/ content (component/theme library + starting point) per contract. Package com.forgebuild.animelutmatch. Built on the Engine copy that already carries AGP 9 built-in Kotlin + compileSdk 37 + material3 1.5.0-alpha28 (M3 Expressive train) so the no-substitution / M3-Expressive rules hold."
+    },
+    {
+      "id": "step-2",
+      "title": "Set identity (namespace/applicationId, app_name) + launch-crash-safe launcher activity",
+      "status": "in_progress",
+      "notes": "namespace/applicationId = com.forgebuild.animelutmatch; app_name = Anime LUT Match. Launcher activity fully-qualified (com.forgebuild.animelutmatch.MainActivity) to avoid the anime-color-match v2 launch-crash regression. Adaptive icon generation (tools/make_adaptive_icon.py) is the next commit."
+    },
+    {
+      "id": "step-3",
+      "title": "Adaptive icon via tools/make_adaptive_icon.py",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-4",
+      "title": "Confirm repo-level signing secrets exist (reuse; do not regenerate)",
+      "status": "pending",
+      "notes": "Confirm KEYSTORE_BASE64/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD exist as GitHub Actions secrets on vjumbo264/forgebuild (read-only list check). Reuse; never regenerate."
+    },
+    {
+      "id": "step-5",
+      "title": "Implement app (video ingest, frame extraction, frame matching, auto/manual color, Levels/Curves, effect stack, LUT .cube + HALD gen, preview, export) — one feature per commit/push",
+      "status": "pending",
+      "notes": "Engine modules reused where relevant: SafeSave (Storage Access Framework) for .cube/HALD export; ScreenSecurity (FLAG_SECURE) on screens showing the imported video frames (sensitive user media); no network/live-data so CacheFirstStore not required."
+    },
+    {
+      "id": "step-6",
+      "title": "Validate build config, dispatch release.yml (app_path=apps/anime-lut-match), release anime-lut-match-v1, verify APK asset via Releases API",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-7",
+      "title": "Set build_complete: true only after anime-lut-match-v1 is verified live",
+      "status": "pending",
+      "notes": ""
+    }
+  ],
+  "notes": "Substitution entries: NONE. Research decisions: pending (auto color-match technique evaluation recorded at step-5). Engine helpers used: SafeSave (export), ScreenSecurity (frame screens), PermissionWiring (only if a permission is genuinely needed — SAF requires none). Permissions model: Storage Access Framework only (ACTION_OPEN_DOCUMENT / ACTION_CREATE_DOCUMENT); no broad storage permissions."
+}
