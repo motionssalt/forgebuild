@@ -1,0 +1,64 @@
+{
+  "slug": "anime-color-match",
+  "project": "forgebuild-anime-color-match",
+  "app_name": "Anime Color Match",
+  "package": "com.forgebuild.animecolormatch",
+  "build_complete": false,
+  "updated_by": "session-1",
+  "current_task": "step-2",
+  "tasks": [
+    {
+      "id": "step-1",
+      "title": "Choose slug, copy engine, seed state + prompt history",
+      "status": "done",
+      "notes": "Slug anime-color-match chosen. Engine copied to apps/anime-color-match/. PROMPT_HISTORY/anime-color-match.md initialized. Push access validated."
+    },
+    {
+      "id": "step-2",
+      "title": "Set identity (namespace/applicationId com.forgebuild.animecolormatch, app_name Anime Color Match)",
+      "status": "done",
+      "notes": "namespace and applicationId set to com.forgebuild.animecolormatch; app_name set to Anime Color Match in strings.xml"
+    },
+    {
+      "id": "step-3",
+      "title": "Adaptive icon via tools/make_adaptive_icon.py",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-4",
+      "title": "Confirm repo-level signing secrets exist",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-5",
+      "title": "Implement Anime Color Match / LUT Transfer (Direct image import, range frame search, live automatic progression visualizer with logs, AE Levels/Curves stack, .cube & HALD LUT export)",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-6",
+      "title": "Validate build configuration and release anime-color-match-v1",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-7",
+      "title": "Verify anime-color-match-v1 release + APK live on GitHub Releases API",
+      "status": "pending",
+      "notes": ""
+    }
+  ],
+  "history": [
+    {
+      "session": "session-1",
+      "event": "step-1 done: slug anime-color-match initialized and pushed as push-access proof."
+    },
+    {
+      "session": "session-1",
+      "event": "step-2 done: identity configured (com.forgebuild.animecolormatch / Anime Color Match)"
+    }
+  ],
+  "notes": "App designed specifically for AMV and anime video editors. Includes direct image import, range candidate search, live multi-stage automatic color progression visualizer with streaming math logs, AE-style Levels and Curves manual editor, non-destructive layer stack, real-time video playback color grade preview, and standard .cube / HALD CLUT export."
+}
