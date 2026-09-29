@@ -3,9 +3,9 @@
   "project": "forgebuild-taskflow",
   "app_name": "TaskFlow",
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
-  "build_complete": true,
-  "updated_by": "taskflow-pass9-session",
-  "current_task": "step-63",
+  "build_complete": false,
+  "updated_by": "taskflow-pass10-session",
+  "current_task": "step-65",
   "substitutions": [],
   "tasks": [
     {
@@ -385,6 +385,30 @@
       "title": "Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v9, verify release + assets live via GitHub Releases API, and set build_complete: true",
       "status": "done",
       "notes": "release.yml dispatched (app_path=apps/taskflow); run 36394077862 completed success. Verified live via GitHub Releases API: tag taskflow-v9 (not draft/prerelease, published at 2026-09-28T07:56:18Z) with assets app-taskflow-v9.apk (2,274,157 bytes, R8-minified, repo-keystore signed) + forgebuild-manifest.json (829 bytes). Prior releases taskflow-v1..v8 untouched. All Pass 9 requirements implemented and verified: (1) ability to clear AI chat message history from Settings > Intelligence and from the ChatPanel header; (2) copy crash logs action with clipboard confirmation and toast feedback in Crash Diagnostics dialog; (3) AI future task creation with time availability evaluated against the actual target date rather than today's budget; (4) full AI tool audit supporting untimed future tasks, fixed-time (including cross-midnight), recurring tasks, sub-tasks at any depth, and task timers."
+    },
+    {
+      "id": "step-64",
+      "title": "Pass 10: append Revision Pass 10 to PROMPT_HISTORY/taskflow.md; seed BUILD_STATE tasks",
+      "status": "done",
+      "notes": "Operator Pass-10 crash fix instruction appended verbatim under 2026-09-29 heading in PROMPT_HISTORY/taskflow.md. Pass-10 task list (steps 64-67) seeded; build_complete set false until taskflow-v10 is verified live."
+    },
+    {
+      "id": "step-65",
+      "title": "Audit and fix all LazyColumn and LazyRow item keys across TaskFlow to guarantee unique, collision-proof keys",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-66",
+      "title": "Verify list rendering stability with simulated recurring instances, overnight segments, and identical IDs",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-67",
+      "title": "Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v10, verify release + assets live via GitHub Releases API, and set build_complete: true",
+      "status": "pending",
+      "notes": ""
     }
   ]
 }
