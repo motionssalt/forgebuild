@@ -332,3 +332,18 @@ This is a follow-up pass on the existing app (previous revisions already impleme
 - When asked to create a task for a future date (e.g. "next week"), the AI is incorrectly trying to fit it against today's remaining time budget instead of the target date's, and struggles/fails as a result.
 - Fix so the AI correctly creates tasks for any date the user specifies, checking time availability against that task's actual target date, not always today.
 - More broadly: the AI must be able to create and manage every type of task the app supports (fixed-time, non-fixed-time, recurring with/without expiration, sub-tasks at any depth, overnight/cross-midnight tasks, tasks for any future date, etc.) — the AI's capabilities must not be more limited than what the user can do manually in the UI. Audit the AI's tool/function set against the full feature list and close any gaps.
+
+
+---
+
+# TaskFlow — Revision Pass 10 (Crash Fix) — 2026-09-29
+
+This is a follow-up pass on the existing app (previous revisions already implemented). This is a specific, diagnosed crash fix based on collected crash logs.
+
+## Duplicate LazyColumn/Row Key Crash (FIX — confirmed root cause)
+- Two separate crashes have been captured, both with the same root cause:
+  `java.lang.IllegalArgumentException: Key "<some number>" was already used. If you are using LazyColumn/Row please make sure you provide a unique key for each item.`
+- This means somewhere in the app's list UI (task lists, sub-task lists, or similar LazyColumn/LazyRow usage), the `key` parameter being supplied for list items is not guaranteed unique — likely because it's derived from something that can collide (e.g. a hashcode, a recurring task's shared identity across instances, or an ID that isn't actually unique per rendered row).
+- Fix: audit every LazyColumn/LazyRow in the app and ensure each item's `key` is a guaranteed-unique, stable value per rendered item (e.g. a proper unique task/sub-task instance ID) — not a value that can collide between unrelated items or between a recurring task's generated instances.
+- Pay particular attention to any list that mixes original tasks with generated recurring instances, or any list rendering both a task and something derived from it (e.g. overnight task segments from the earlier overnight-task feature) — these are the most likely sources of two rows ending up with the same key.
+- After fixing, verify by reproducing conditions similar to both crash reports (list re-rendering with recurring/duplicated-looking items) to confirm the crash no longer occurs, not just that the code compiles.
