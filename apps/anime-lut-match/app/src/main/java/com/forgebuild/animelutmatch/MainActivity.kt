@@ -36,12 +36,12 @@ class MainActivity : ComponentActivity() {
     private val mediaPicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri == null) return@registerForActivityResult
-            // Operator requirement: importing new resources starts from clean settings — never
-            // resurrect the previous stack/crop/precision. Sources for the untouched side stay.
-            session.reset()
             val type = contentResolver.getType(uri).orEmpty()
             if (type.startsWith("image/")) {
                 val bmp = ImageLoader.decode(this, uri) ?: return@registerForActivityResult
+                // Clear the correction settings and only THIS side's locked frame; the other
+                // side's frame survives (v3 fix — see MatchSession.resetForImport).
+                session.resetForImport(pickIsReference)
                 val src = MediaSource.Image(bmp)
                 session.logLine("Imported image (${bmp.width}×${bmp.height}) as ${if (pickIsReference) "reference" else "target"}")
                 if (pickIsReference) { refSource?.release(); refSource = src }
@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                 if (ex == null || ex.durationMs <= 0 || ex.width <= 0) {
                     ex?.release(); return@registerForActivityResult
                 }
+                session.resetForImport(pickIsReference)
                 val src = MediaSource.Video(ex)
                 session.logLine("Imported video (${ex.width}×${ex.height}, ${ex.durationMs / 1000.0}s) as ${if (pickIsReference) "reference" else "target"}")
                 if (pickIsReference) { refSource?.release(); refSource = src }
