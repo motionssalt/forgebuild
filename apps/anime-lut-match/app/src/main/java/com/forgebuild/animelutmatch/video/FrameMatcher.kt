@@ -20,7 +20,13 @@ object FrameMatcher {
     data class Result(
         val timeMs: Long,
         val confidence: Float,
-        val crop: IntArray?, // left,top,right,bottom into the candidate frame that matches the reference framing
+        /**
+         * Matching sub-rect as NORMALIZED fractions of the candidate frame
+         * (left,top,right,bottom in 0..1). Normalized so the caller can map it onto the
+         * full-resolution frame by simple multiplication — v2 returned pixel coords of the 256px
+         * analysis frame and rescaled them with wrong per-axis factors.
+         */
+        val crop: FloatArray?,
     )
 
     /** Mean-normalized luminance grid signature, gx*gy cells, 0..1 each. */
@@ -126,12 +132,15 @@ object FrameMatcher {
         var best: Result? = null; var vi = 0
         for (c in top) {
             val f = extractor.scaledFrameAt(c.t, 256) ?: continue
+            val fw = f.width.toFloat(); val fh = f.height.toFloat()
             val (crop, score) = findCrop(ref, f)
             f.recycle()
             // confidence from structural distance; require crop area >= 40% (enough corresponding region)
-            val areaFrac = ((crop[2] - crop[0]).toFloat() * (crop[3] - crop[1])) / (256f * 256f)
+            val areaFrac = ((crop[2] - crop[0]) * (crop[3] - crop[1])).toFloat() / (fw * fh)
             val conf = (1f - (score / 0.35f).coerceIn(0f, 1f)) * if (areaFrac < 0.4f) 0.5f else 1f
-            if (best == null || conf > best!!.confidence) best = Result(c.t, conf, crop)
+            // normalize to fractions of the candidate frame so any resolution maps cleanly
+            val norm = floatArrayOf(crop[0] / fw, crop[1] / fh, crop[2] / fw, crop[3] / fh)
+            if (best == null || conf > best!!.confidence) best = Result(c.t, conf, norm)
             vi++; onProgress?.invoke(0.7f + 0.3f * vi / top.size)
         }
         best?.let {
