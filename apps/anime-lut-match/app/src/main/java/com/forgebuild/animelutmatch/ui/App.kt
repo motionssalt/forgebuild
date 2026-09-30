@@ -124,7 +124,7 @@ fun App(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (screen) {
-                Screen.Home -> HomeScreen(onPickMedia, refSource, tgtSource, onNewProject, onScreen)
+                Screen.Home -> HomeScreen(session, onPickMedia, refSource, tgtSource, onNewProject, onScreen)
                 Screen.RefFrame -> FramePickScreen("Reference frame", refSource) { _, bmp ->
                     session.referenceFrame = bmp
                     session.logLine("Reference frame locked in (${bmp.width}×${bmp.height})")
@@ -141,12 +141,17 @@ fun App(
 
 @Composable
 private fun HomeScreen(
+    session: MatchSession,
     onPickMedia: (Boolean) -> Unit,
     refSource: MediaSource?,
     tgtSource: MediaSource?,
     onNewProject: () -> Unit,
     onScreen: (Screen) -> Unit,
 ) {
+    // Reading revision keeps the frame status lines live as frames get locked in.
+    val rev = session.revision
+    val refFrameReady = rev >= 0 && session.referenceFrame != null
+    val tgtFrameReady = session.targetFrame != null
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -177,11 +182,6 @@ private fun HomeScreen(
                     Text("Target: ${it.describe()}", style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (refSource != null && tgtSource != null) {
-                    Button(onClick = { onScreen(Screen.Editor) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Open color editor")
-                    }
-                }
                 if (refSource != null || tgtSource != null) {
                     OutlinedButton(onClick = onNewProject, modifier = Modifier.fillMaxWidth()) {
                         Text("Start new project (clear everything)")
@@ -189,6 +189,46 @@ private fun HomeScreen(
                 }
             }
         }
+
+        // Frames step — always reachable (v3 fix: frame picking / frame search used to be
+        // unreachable once you left those screens, which made matching look broken).
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Frames", style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(
+                    onClick = { onScreen(Screen.RefFrame) }, enabled = refSource != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (refFrameReady) "Change reference frame" else "Pick reference frame") }
+                Text(
+                    when {
+                        refSource == null -> "Import a reference first."
+                        refFrameReady -> "Reference frame locked in ✓"
+                        else -> "No reference frame yet — Auto Match needs it."
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (refFrameReady) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+                )
+                OutlinedButton(
+                    onClick = { onScreen(Screen.TgtFrame) }, enabled = tgtSource != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (tgtFrameReady) "Change target frame / re-run matching" else "Pick target frame or find matching frame") }
+                Text(
+                    when {
+                        tgtSource == null -> "Import your footage or image first."
+                        tgtFrameReady -> "Target frame locked in ✓"
+                        else -> "No target frame yet."
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (tgtFrameReady) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+                )
+                Button(
+                    onClick = { onScreen(Screen.Editor) },
+                    enabled = refFrameReady && tgtFrameReady,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Open color editor") }
+            }
+        }
+
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Workflow", style = MaterialTheme.typography.titleMedium)
@@ -340,20 +380,33 @@ private fun MatchingScreen(
     var progress by remember { mutableStateOf(0f) }
     var result by remember { mutableStateOf<FrameMatcher.Result?>(null) }
     var done by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        val ref = session.referenceFrame
+    var accepting by remember { mutableStateOf(false) }
+    // No reference frame = matching cannot run; say so instead of reporting a failed search.
+    val ref = session.referenceFrame
+    val scope = rememberCoroutineScope()
+    var preview by remember { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(ref, extractor) {
         if (extractor == null || ref == null) { done = true; return@LaunchedEffect }
         val (s, e) = session.matchRange ?: (0L to extractor.durationMs)
-        result = withContext(Dispatchers.Default) {
+        session.logLine("Frame matching started over ${s / 1000.0}s – ${e / 1000.0}s")
+        val r = withContext(Dispatchers.Default) {
             FrameMatcher.findMatch(extractor, downscale(ref, 256), s, e,
                 onProgress = { progress = it },
                 onLog = { session.logLine(it) })
         }
+        result = r
+        if (r != null) preview = withContext(Dispatchers.Default) { extractor.scaledFrameAt(r.timeMs, 512) }
         done = true
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Frame matching", style = MaterialTheme.typography.titleMedium)
-        if (!done) {
+        if (ref == null) {
+            Text("No reference frame is locked in yet.", color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.titleSmall)
+            Text("Pick the reference frame first — matching compares your footage against it.",
+                style = MaterialTheme.typography.bodySmall)
+            Button(onClick = { onScreen(Screen.RefFrame) }) { Text("Pick reference frame") }
+        } else if (!done) {
             EngineLinearWavyProgress(progress = { progress }, modifier = Modifier.fillMaxWidth())
             Text("Scanning range… ${(progress * 100).roundToInt()}%", style = MaterialTheme.typography.bodySmall)
         } else {
@@ -369,20 +422,38 @@ private fun MatchingScreen(
                     Text("Low confidence match", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleSmall)
                 }
                 Text("Best match: ${r.timeMs / 1000.0}s   Confidence: $conf%", style = MaterialTheme.typography.titleSmall)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Image(downscale(ref, 512).asImageBitmap(), "Reference",
+                        modifier = Modifier.weight(1f).height(150.dp))
+                    preview?.let { Image(it.asImageBitmap(), "Matched frame", modifier = Modifier.weight(1f).height(150.dp)) }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = {
-                        val f = extractor?.frameAt(r.timeMs)
-                        if (f != null) {
-                            // crop is expressed on a 256px analysis frame; scale to the real frame
-                            val crop = r.crop?.let { c ->
-                                val sx = f.width / 256f
-                                val sy = f.height / ((f.height * 256f / f.width).coerceAtLeast(1f))
-                                intArrayOf((c[0] * sx).toInt(), (c[1] * sy).toInt(), (c[2] * sx).toInt(), (c[3] * sy).toInt())
+                    Button(
+                        enabled = !accepting,
+                        onClick = {
+                            scope.launch {
+                                accepting = true
+                                val f = withContext(Dispatchers.Default) { extractor?.frameAt(r.timeMs) }
+                                if (f != null) {
+                                    // crop comes back normalized (0..1) — map straight onto the real frame
+                                    val crop = r.crop?.let { c ->
+                                        intArrayOf(
+                                            (c[0] * f.width).toInt().coerceIn(0, f.width - 1),
+                                            (c[1] * f.height).toInt().coerceIn(0, f.height - 1),
+                                            (c[2] * f.width).toInt().coerceIn(1, f.width),
+                                            (c[3] * f.height).toInt().coerceIn(1, f.height),
+                                        )
+                                    }
+                                    session.targetFrame = f; session.targetCrop = crop; session.matchConfidence = r.confidence
+                                    session.logLine("Match accepted at ${r.timeMs / 1000.0}s (${f.width}×${f.height})")
+                                    session.touch(); onScreen(Screen.Editor)
+                                } else {
+                                    session.logLine("Could not decode the matched frame at full resolution")
+                                }
+                                accepting = false
                             }
-                            session.targetFrame = f; session.targetCrop = crop; session.matchConfidence = r.confidence
-                            session.touch(); onScreen(Screen.Editor)
-                        }
-                    }) { Text("Accept match") }
+                        },
+                    ) { Text(if (accepting) "Loading…" else "Accept match") }
                     OutlinedButton(onClick = { onScreen(Screen.TgtFrame) }) { Text("Find another") }
                 }
             }
@@ -443,7 +514,35 @@ private fun EditorScreen(
         value = base?.let { b -> withContext(Dispatchers.Default) { session.renderPreview(b) } }
     }
 
+    val refFrame = session.referenceFrame
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Missing-frame guidance: the editor can't match anything without both frames, and the
+        // user must be able to go and get them from here (v3 fix).
+        if (refFrame == null || base == null) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Frames missing", style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer)
+                    Text(
+                        listOfNotNull(
+                            if (refFrame == null) "reference frame" else null,
+                            if (base == null) "target frame" else null,
+                        ).joinToString(" and ") + " not locked in yet — Auto Match stays disabled until both are set.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (refFrame == null) {
+                            Button(onClick = { onScreen(Screen.RefFrame) }) { Text("Pick reference frame") }
+                        }
+                        if (base == null) {
+                            Button(onClick = { onScreen(Screen.TgtFrame) }) { Text("Pick target frame") }
+                        }
+                    }
+                }
+            }
+        }
+
         // Reference / Target comparison with channel-isolated view
         Text("Reference vs Target", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -452,13 +551,32 @@ private fun EditorScreen(
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            session.referenceFrame?.let {
-                Image(channelView(downscale(applyCrop(it, null), 512), channel).asImageBitmap(), "Reference",
-                    modifier = Modifier.weight(1f).height(160.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Reference", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (refFrame != null) {
+                    Image(channelView(downscale(refFrame, 512), channel).asImageBitmap(), "Reference frame",
+                        modifier = Modifier.fillMaxWidth().height(160.dp))
+                } else {
+                    Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                        Text("No reference frame", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
-            (rendered ?: base)?.let {
-                Image(channelView(it, channel).asImageBitmap(), "Target",
-                    modifier = Modifier.weight(1f).height(160.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Target", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val shown = rendered ?: base
+                if (shown != null) {
+                    Image(channelView(shown, channel).asImageBitmap(), "Target frame",
+                        modifier = Modifier.fillMaxWidth().height(160.dp))
+                } else {
+                    Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                        Text("No target frame", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         }
 
