@@ -3,7 +3,7 @@
   "project": "forgebuild-anime-lut-match",
   "build_complete": false,
   "updated_by": "build-agent",
-  "current_task": "step-10",
+  "current_task": "step-11",
   "tasks": [
     {
       "id": "step-1",
@@ -62,14 +62,14 @@
     {
       "id": "step-10",
       "title": "v3: fix broken frame matching / disabled Auto Match / missing reference frame in editor",
-      "status": "in_progress",
-      "notes": "Root cause diagnosed: MainActivity.mediaPicker called session.reset() on EVERY import, and reset() clears referenceFrame+targetFrame. So after locking the reference frame and then importing the target, the reference frame was wiped -> MatchingScreen's ref==null early-return made frame search always report 'unable to identify a matching frame', the editor's Auto Match button stayed disabled (enabled requires referenceFrame != null) and the reference pane rendered nothing. Secondary: HomeScreen offered no way back into the frame-pick / frame-search screens, so once past import the matching flow was unreachable. Fix in progress."
+      "status": "done",
+      "notes": "ROOT CAUSE: MainActivity.mediaPicker called session.reset() on EVERY import and reset() nulls BOTH frames. Locking the reference frame then importing the target therefore erased referenceFrame, which produced all three reported symptoms at once: MatchingScreen's ref==null early-return reported a failed search (\"frame matching completely broken\"), the editor's Auto Match button stayed disabled (enabled requires referenceFrame != null) and the editor's reference pane rendered nothing. FIXES: (1) MatchSession.resetForImport(isReference) replaces the blanket reset on import — it clears the correction stack/crop/confidence/range/precision (keeping the original no-stale-settings requirement) but only nulls the frame for the side being replaced; full reset() is still used by 'Start new project'. (2) The reset now runs AFTER a successful decode, so a cancelled/undecodable pick no longer wipes the project. (3) HomeScreen gained a persistent 'Frames' card: reachable 'Pick/Change reference frame' and 'Pick target frame or find matching frame' entry points plus live locked-in status, and 'Open color editor' is gated on both frames — in v2 the frame-pick/frame-search screens were only reachable straight after an import, so matching was unreachable afterwards. (4) MatchingScreen: distinguishes 'no reference frame locked in' (with a jump to the reference picker) from a genuinely failed search, logs the search range, shows a reference-vs-matched-frame comparison, and decodes the accepted full-res frame off the main thread with a busy state. (5) FrameMatcher.Result.crop is now NORMALIZED (0..1 fractions of the candidate frame) and the area fraction uses the real candidate dimensions — v2 returned pixel coords of the 256px analysis frame and rescaled them with a bogus per-axis factor, so accepted crops were wrong on non-256-wide frames. (6) Editor shows an errorContainer 'Frames missing' card with direct navigation, and labels/placeholders on both comparison panes so an empty side is explicit instead of silently blank. App-only change; engine/ untouched (nothing here concerns the shared library). No new dependencies, no substitutions."
     },
     {
       "id": "step-11",
       "title": "v3: validate (config/compile sanity, flow walkthrough) and update checkpoint",
-      "status": "pending",
-      "notes": "Pending step-10."
+      "status": "in_progress",
+      "notes": "Static review done (references, imports, normalized-crop call sites all consistent). Compile validation happens in the release workflow run; any CI compile error gets fixed and re-dispatched."
     },
     {
       "id": "step-12",
