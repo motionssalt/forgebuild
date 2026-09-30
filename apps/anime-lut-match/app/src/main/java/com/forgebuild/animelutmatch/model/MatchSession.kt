@@ -108,8 +108,7 @@ class MatchSession(
     }
 
     /**
-     * Full reset: importing new media starts a clean project (operator requirement — leaving the
-     * page and importing new resources must never resurrect the previous settings).
+     * Full reset: "Start new project" drops both sides and every setting.
      */
     fun reset() {
         stack.clear()
@@ -120,6 +119,25 @@ class MatchSession(
         matchRange = null
         log.clear()
         precision = Precision.STANDARD
+        touch()
+    }
+
+    /**
+     * Scoped reset for a single import (v3 fix).
+     *
+     * Importing new media must clear the previous CORRECTION SETTINGS (no stale stack/crop — the
+     * original operator requirement) but must NOT wipe the frame that was already locked in on the
+     * OTHER side. v2 called the full reset() on every import, so importing the target erased the
+     * reference frame: frame search then always failed ("unable to identify a matching frame"),
+     * Auto Match stayed disabled, and the editor's reference pane was empty.
+     */
+    fun resetForImport(isReference: Boolean) {
+        stack.clear()
+        targetCrop = null
+        matchConfidence = 0f
+        matchRange = null
+        precision = Precision.STANDARD
+        if (isReference) referenceFrame = null else targetFrame = null
         touch()
     }
 }
