@@ -1,9 +1,9 @@
 {
   "slug": "anime-lut-match",
   "project": "forgebuild-anime-lut-match",
-  "build_complete": false,
+  "build_complete": true,
   "updated_by": "build-agent",
-  "current_task": "step-12",
+  "current_task": null,
   "tasks": [
     {
       "id": "step-1",
@@ -74,8 +74,8 @@
     {
       "id": "step-12",
       "title": "v3: release anime-lut-match-v3 via release.yml, verify live via Releases API, set build_complete true",
-      "status": "in_progress",
-      "notes": "release_notes must be a bugfix-scope description (no major/rewrite keywords -> minor versionName bump). versionCode stays workflow-owned."
+      "status": "done",
+      "notes": "release.yml dispatched 2026-09-30 (run 36691396437, completed success on first try \u2014 no CI fixes needed). anime-lut-match-v3 verified live on the Releases API with APK + forgebuild-manifest.json assets. Prior releases anime-lut-match-v1/v2 untouched. release_notes were bugfix-scope (no major/rewrite keywords) so versionName received a minor bump; versionCode remained workflow-owned via -PforgebuildVersionCode. build_complete set true."
     }
   ],
   "notes": "Substitution entries: (1) frame matching uses a luminance-structure descriptor instead of OpenCV keypoints \u2014 heavyweight native CV would violate lightweight-by-default for a 96px structural match (carried from v1). No new substitutions in v2. Engine helpers used: SafeSave (SAF ACTION_CREATE_DOCUMENT export \u2014 no DownloadManager), ScreenSecurity (FLAG_SECURE per-screen on frame/editor/matching/preview screens). Permissions model: SAF only (OpenDocument/CreateDocument); zero manifest permissions \u2014 image import needed none. New deps in v2: NONE (image decode is android.graphics.BitmapFactory; live state is androidx.compose.runtime which was already present). Not Engine-level: all changes are app-local; engine/ untouched because none of the six fixes concern the shared component/theme library."
