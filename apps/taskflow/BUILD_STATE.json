@@ -3,9 +3,9 @@
   "project": "forgebuild-taskflow",
   "app_name": "TaskFlow",
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
-  "build_complete": false,
+  "build_complete": true,
   "updated_by": "taskflow-pass11-session",
-  "current_task": "step-71",
+  "current_task": "",
   "substitutions": [],
   "tasks": [
     {
@@ -431,8 +431,8 @@
     {
       "id": "step-71",
       "title": "Pass 11: Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v11, verify release + assets live via GitHub Releases API, and set build_complete: true",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Validated build and release via release.yml (run 37075738035). Verified live via GitHub Releases API: tag 'taskflow-v11', release assets 'app-taskflow-v11.apk' (2,274,157 bytes) and 'forgebuild-manifest.json' (604 bytes) both uploaded and verified. All prior releases taskflow-v1 through taskflow-v10 remain intact. Pass 11 completed and verified."
     }
   ]
 }
