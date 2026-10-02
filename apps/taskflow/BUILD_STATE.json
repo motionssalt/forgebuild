@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass11-session",
-  "current_task": "step-68",
+  "current_task": "step-69",
   "substitutions": [],
   "tasks": [
     {
@@ -413,8 +413,8 @@
     {
       "id": "step-68",
       "title": "Pass 11: Implement durable Room persistence for AI chat messages (ChatMessage entity, ChatMessageDao, TaskFlowDb v7 with migration 6->7) with immediate commit on creation",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Implemented durable Room persistence for AI chat transcript: (1) Created ChatMessage entity and ChatMessageDao in com.forgebuild.taskflow.data with autoGenerate=true Long primary key and Room TypeConverters for Role. (2) Upgraded TaskFlowDb to version 7 with MIGRATION_6_7 preserving all existing tasks. (3) Updated AgentOrchestrator to observe chat messages from Room via observeAll().stateIn(appScope, SharingStarted.Eagerly, emptyList()) and immediately insert user-sent messages (text and audio), intermediate agent action steps, model replies, and error messages to SQLite upon creation. clearMessages() now wipes Room durable storage."
     },
     {
       "id": "step-69",

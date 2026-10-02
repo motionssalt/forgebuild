@@ -2,15 +2,19 @@ package com.forgebuild.taskflow.ai
 
 import android.content.Context
 import android.os.PowerManager
+import com.forgebuild.taskflow.data.ChatMessage
+import com.forgebuild.taskflow.data.TaskFlowDb
+import com.forgebuild.taskflow.notify.NotificationHub
+import com.forgebuild.taskflow.settings.GeminiKeyStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import com.forgebuild.taskflow.notify.NotificationHub
-import com.forgebuild.taskflow.settings.GeminiKeyStore
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -22,15 +26,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-data class ChatMessage(
-    val role: Role,
-    val text: String,
-    val id: String = java.util.UUID.randomUUID().toString()
-) {
-    enum class Role { USER, MODEL, ACTION }
-}
-
-/** Runs the multi-turn Gemini function-calling loop and records the chat transcript. */
+/** Runs the multi-turn Gemini function-calling loop and records the chat transcript in Room. */
 class AgentOrchestrator private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -47,6 +43,23 @@ class AgentOrchestrator private constructor(context: Context) {
             }
     }
 
+    private val db = TaskFlowDb.get(appContext)
+    private val chatDao = db.chatMessageDao()
+    private val repo = com.forgebuild.taskflow.data.TaskRepository.get(context)
+    private val client = GeminiClient(GeminiKeyStore.get(context))
+    private val tools = TaskAgentTools(repo)
+
+    /** Durable chat messages stream observed from Room. Survives app restarts. */
+    val messages: StateFlow<List<ChatMessage>> = chatDao.observeAll()
+        .stateIn(appScope, SharingStarted.Eagerly, emptyList())
+
+    fun clearMessages(): Job = appScope.launch {
+        chatDao.clearAll()
+    }
+
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy
+
     fun submit(userText: String): Job = appScope.launch {
         send(userText)
     }
@@ -54,30 +67,15 @@ class AgentOrchestrator private constructor(context: Context) {
     fun submitAudio(mimeType: String, base64Audio: String): Job = appScope.launch {
         sendAudio(mimeType, base64Audio)
     }
-    private val repo = com.forgebuild.taskflow.data.TaskRepository.get(context)
-    private val client = GeminiClient(GeminiKeyStore.get(context))
-    private val tools = TaskAgentTools(repo)
-
-    private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
-    val messages: StateFlow<List<ChatMessage>> = _messages
-
-    fun clearMessages() {
-        _messages.value = emptyList()
-    }
-
-    private val _busy = MutableStateFlow(false)
-    val busy: StateFlow<Boolean> = _busy
 
     private suspend fun buildSystemInstruction(): String {
         val now = System.currentTimeMillis()
-        val cal = Calendar.getInstance().apply { timeInMillis = now }
         val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss (EEEE)", Locale.getDefault())
         val tz = TimeZone.getDefault()
         val tzName = tz.getDisplayName(tz.inDaylightTime(Date(now)), TimeZone.LONG)
         val tzId = tz.id
         val remainingToday = repo.getRemainingMinutesToday()
         val allocatedToday = repo.getAllocatedMinutesToday()
-
         return buildString {
             append("You are TaskFlow's built-in intelligent task assistant. ")
             append("CURRENT DEVICE CLOCK & TIME ZONE: ")
@@ -103,30 +101,30 @@ class AgentOrchestrator private constructor(context: Context) {
 
     private fun historyContents(): MutableList<JsonObject> {
         val contents = mutableListOf<JsonObject>()
-        _messages.value.takeLast(12).filter { it.role != ChatMessage.Role.ACTION }.forEach { m ->
+        messages.value.takeLast(12).filter { it.role != ChatMessage.Role.ACTION }.forEach { m ->
             contents.add(GeminiClient.content(if (m.role == ChatMessage.Role.USER) "user" else "model",
                 listOf(GeminiClient.textPart(m.text))))
         }
         return contents
     }
 
-    /** Send one typed user instruction; runs the function-calling loop to completion. */
+    /** Send one typed user instruction; immediately saved to Room and runs function-calling loop. */
     suspend fun send(userText: String) {
         if (_busy.value) return
         _busy.value = true
-        _messages.value = _messages.value + ChatMessage(ChatMessage.Role.USER, userText)
+        chatDao.insert(ChatMessage(role = ChatMessage.Role.USER, text = userText))
         runLoop(historyContents())
     }
 
     /**
      * Send a RAW recorded voice note straight to Gemini (no on-device speech-to-text):
-     * Gemini natively transcribes and understands the audio clip itself.
+     * Immediately saved to Room and processed by Gemini.
      */
     suspend fun sendAudio(mimeType: String, base64Audio: String) {
         if (_busy.value) return
         _busy.value = true
+        chatDao.insert(ChatMessage(role = ChatMessage.Role.USER, text = "Voice note (audio)"))
         val contents = historyContents()
-        _messages.value = _messages.value + ChatMessage(ChatMessage.Role.USER, "Voice note (audio)")
         contents.add(GeminiClient.content("user", listOf(
             GeminiClient.inlineDataPart(mimeType, base64Audio),
             GeminiClient.textPart("This is a voice note the user just recorded. Listen to the audio, transcribe it yourself, then act on the spoken request (create/update/complete/list tasks as asked) exactly as if it were typed text.")
@@ -157,7 +155,7 @@ class AgentOrchestrator private constructor(context: Context) {
                     // Final text response from model
                     val text = parts.mapNotNull { it.jsonObject["text"]?.jsonPrimitive?.content }.joinToString("\n").trim()
                     if (text.isNotEmpty()) {
-                        _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL, text)
+                        chatDao.insert(ChatMessage(role = ChatMessage.Role.MODEL, text = text))
                         if (actions.isNotEmpty()) {
                             NotificationHub.agentConfirmation(appContext, text)
                         }
@@ -174,29 +172,29 @@ class AgentOrchestrator private constructor(context: Context) {
                     if (name == null || args == null) continue
                     val result = tools.execute(name, args)
                     actions.add(result)
-                    _messages.value = _messages.value + ChatMessage(ChatMessage.Role.ACTION, result)
+                    chatDao.insert(ChatMessage(role = ChatMessage.Role.ACTION, text = result))
                     responseParts.add(GeminiClient.functionResponsePart(name, result))
                 }
                 contents.add(GeminiClient.content("user", responseParts))
             }
         } catch (e: GeminiClient.NoKeysException) {
-            _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
-                "No Gemini API key configured. Open Settings to add your key.")
+            chatDao.insert(ChatMessage(role = ChatMessage.Role.MODEL,
+                text = "No Gemini API key configured. Open Settings to add your key."))
         } catch (e: GeminiClient.HighUsageExhaustedException) {
             // Distinct message for high load without false API key error notification
-            _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
-                "Gemini servers are experiencing temporary high usage right now. The request was retried with backoff. Please try again in a few moments.")
+            chatDao.insert(ChatMessage(role = ChatMessage.Role.MODEL,
+                text = "Gemini servers are experiencing temporary high usage right now. The request was retried with backoff. Please try again in a few moments."))
         } catch (e: GeminiClient.InvalidApiKeyException) {
             NotificationHub.apiKeysFailed(appContext)
-            _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
-                "Configured Gemini API key is invalid or rejected. Check Settings.")
+            chatDao.insert(ChatMessage(role = ChatMessage.Role.MODEL,
+                text = "Configured Gemini API key is invalid or rejected. Check Settings."))
         } catch (e: GeminiClient.AllKeysFailedException) {
             NotificationHub.apiKeysFailed(appContext)
-            _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
-                "Configured Gemini API keys failed. Check Settings.")
+            chatDao.insert(ChatMessage(role = ChatMessage.Role.MODEL,
+                text = "Configured Gemini API keys failed. Check Settings."))
         } catch (e: Exception) {
-            _messages.value = _messages.value + ChatMessage(ChatMessage.Role.MODEL,
-                "Error: ${e.message ?: "Could not complete request."}")
+            chatDao.insert(ChatMessage(role = ChatMessage.Role.MODEL,
+                text = "Error: ${e.message ?: "Could not complete request."}"))
         } finally {
             _busy.value = false
             runCatching {
