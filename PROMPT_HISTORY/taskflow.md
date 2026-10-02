@@ -347,3 +347,25 @@ This is a follow-up pass on the existing app (previous revisions already impleme
 - Fix: audit every LazyColumn/LazyRow in the app and ensure each item's `key` is a guaranteed-unique, stable value per rendered item (e.g. a proper unique task/sub-task instance ID) — not a value that can collide between unrelated items or between a recurring task's generated instances.
 - Pay particular attention to any list that mixes original tasks with generated recurring instances, or any list rendering both a task and something derived from it (e.g. overnight task segments from the earlier overnight-task feature) — these are the most likely sources of two rows ending up with the same key.
 - After fixing, verify by reproducing conditions similar to both crash reports (list re-rendering with recurring/duplicated-looking items) to confirm the crash no longer occurs, not just that the code compiles.
+
+
+---
+
+# TaskFlow — Revision Pass 11 (Crash Fix) — 2026-10-02
+
+This is a follow-up pass on the existing app (previous revisions already implemented). This fix has not been attempted yet — this is the first pass addressing it.
+
+## Duplicate LazyColumn/Row Key Crash (FIX — critical)
+Three crash reports have been collected, all with the same signature:
+`java.lang.IllegalArgumentException: Key "<number>" was already used. If you are using LazyColumn/Row please make sure you provide a unique key for each item.`
+
+Additional diagnostic detail from direct observation: the crash reliably happens when sending a **second** message to the AI (by text or voice note) in the same chat session — not on the first message. Separately, chat/message history is also being **wiped when the app is reopened** after this happens. These two symptoms are very likely connected and point to the AI chat screen's message list and its underlying message store as the primary suspect, rather than a general app-wide issue across task lists.
+
+Investigate and fix as follows:
+1. **Start with the AI chat screen specifically**, since the reproduction steps point there directly:
+   - Reproduce exactly: send one message, wait for the AI's response, then send a second message (test both text and voice note) — confirm this triggers the crash.
+   - Check whether the key assigned to each message in the chat's LazyColumn can collide — e.g. both messages getting a key derived from a timestamp at low resolution, or a "pending/sending" placeholder message sharing a key with the real message once it's confirmed/saved, instead of being properly replaced.
+   - Check the message persistence layer: history being wiped on app reopen suggests messages may not be reliably committed to durable storage — e.g. an in-memory-only list that crashes before a save step runs, or a save operation that silently fails. If the crash happens before the first message's save completes, that would explain both symptoms together.
+2. **Also check other LazyColumn/LazyRow usages in the app** (task lists, sub-task lists at every nesting level, completed list, unfinished list, week/month/year views, Settings lists) in case there's a second, unrelated instance of this same class of bug — particularly any list mixing recurring task instances or overnight/cross-midnight task segments with regular tasks, where two rendered rows could plausibly derive from the same underlying entity.
+3. **Fix the actual root cause, not just symptoms**: every list item's `key` must be a genuinely unique, stable identifier (e.g. a UUID or database primary key) assigned once per row and never recomputed or derived from mutable/content-based values. Never use a raw `hashCode()` of an object as a key — hashes of mutable data can coincidentally collide and are the classic cause of this exact error. Fix message persistence so every message (user-sent and AI-response) is reliably saved to durable storage as soon as it's created/received, not only once a full exchange completes.
+4. **Verify, don't assume**: after fixing, reproduce the exact sequence above (text, then separately voice note) and confirm no crash occurs and chat history survives an app restart. Also stress-test a task list containing several recurring tasks and their generated instances together. Confirm fixes work in practice, not just that the code compiles.
