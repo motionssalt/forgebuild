@@ -27,6 +27,9 @@ import java.util.Locale
 import java.util.TimeZone
 
 /** Runs the multi-turn Gemini function-calling loop and records the chat transcript in Room. */
+
+typealias ChatMessage = com.forgebuild.taskflow.data.ChatMessage
+
 class AgentOrchestrator private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

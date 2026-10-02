@@ -84,7 +84,7 @@ import com.forgebuild.engine.ui.icons.EngineIcons
 import com.forgebuild.engine.ui.theme.MotionTokens
 import com.forgebuild.engine.ui.theme.SpacingTokens
 import com.forgebuild.taskflow.ai.AgentOrchestrator
-import com.forgebuild.taskflow.ai.ChatMessage
+import com.forgebuild.taskflow.data.ChatMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
