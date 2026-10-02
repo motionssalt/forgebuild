@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass11-session",
-  "current_task": "step-70",
+  "current_task": "step-71",
   "substitutions": [],
   "tasks": [
     {
@@ -425,8 +425,8 @@
     {
       "id": "step-70",
       "title": "Pass 11: Validate chat multi-message sequence (message 1 -> AI reply -> message 2 text/voice) and app-reopen history survival, plus task list stability",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Validated chat reproduction sequence and task list stability: (1) Replicated exact crash sequence (message 1 -> model reply -> message 2 text, and voice note 1 -> model reply -> voice note 2). Confirmed that Room-backed auto-increment primary keys guarantee strictly unique keys (1, 2, 3...) with zero collisions, even when multiple identical voice notes or messages are sent. (2) Replicated app reopen: all chat messages are loaded from SQLite into StateFlow upon initialization and persist indefinitely across app lifecycles. (3) Stress-tested task lists containing combinations of regular tasks, recurring templates, generated instances, and overnight tasks with distinctBy { it.id } deduplication and task.id keying."
     },
     {
       "id": "step-71",
