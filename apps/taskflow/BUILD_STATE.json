@@ -3,9 +3,9 @@
   "project": "forgebuild-taskflow",
   "app_name": "TaskFlow",
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
-  "build_complete": true,
-  "updated_by": "taskflow-pass10-session",
-  "current_task": "",
+  "build_complete": false,
+  "updated_by": "taskflow-pass11-session",
+  "current_task": "step-68",
   "substitutions": [],
   "tasks": [
     {
@@ -409,6 +409,30 @@
       "title": "Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v10, verify release + assets live via GitHub Releases API, and set build_complete: true",
       "status": "done",
       "notes": "Validated build and release via release.yml (run 36599600386). Verified live via GitHub Releases API: tag 'taskflow-v10', release assets 'app-taskflow-v10.apk' (2,274,157 bytes) and 'forgebuild-manifest.json' (584 bytes) both uploaded and verified. All prior releases taskflow-v1 through taskflow-v9 remain intact. Pass 10 completed and verified."
+    },
+    {
+      "id": "step-68",
+      "title": "Pass 11: Implement durable Room persistence for AI chat messages (ChatMessage entity, ChatMessageDao, TaskFlowDb v7 with migration 6->7) with immediate commit on creation",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-69",
+      "title": "Pass 11: Fix LazyColumn keying across ChatPanel, TaskListScreen, CompletedTasksScreen, and UnfinishedTasksScreen using stable, immutable database primary key identifiers (key = { it.id }) and distinctBy deduplication",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-70",
+      "title": "Pass 11: Validate chat multi-message sequence (message 1 -> AI reply -> message 2 text/voice) and app-reopen history survival, plus task list stability",
+      "status": "pending",
+      "notes": ""
+    },
+    {
+      "id": "step-71",
+      "title": "Pass 11: Validate build, dispatch release.yml (app_path=apps/taskflow) -> taskflow-v11, verify release + assets live via GitHub Releases API, and set build_complete: true",
+      "status": "pending",
+      "notes": ""
     }
   ]
 }
