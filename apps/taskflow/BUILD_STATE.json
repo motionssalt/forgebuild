@@ -5,7 +5,7 @@
   "description": "Native Android to-do app with fractional-rank priority, infinitely nestable sub-tasks, exact-alarm fixed-time reminders, and a Gemini-powered voice/text AI agent with full task CRUD.",
   "build_complete": false,
   "updated_by": "taskflow-pass11-session",
-  "current_task": "step-69",
+  "current_task": "step-70",
   "substitutions": [],
   "tasks": [
     {
@@ -419,8 +419,8 @@
     {
       "id": "step-69",
       "title": "Pass 11: Fix LazyColumn keying across ChatPanel, TaskListScreen, CompletedTasksScreen, and UnfinishedTasksScreen using stable, immutable database primary key identifiers (key = { it.id }) and distinctBy deduplication",
-      "status": "pending",
-      "notes": ""
+      "status": "done",
+      "notes": "Replaced fragile derived/indexed LazyColumn item keys across the app with permanent, immutable SQLite primary key identifiers (key = { it.id }) and distinctBy { it.id } deduplication: (1) ChatPanel.kt: replaced position-indexed messageKeys lookup with items(messages, key = { it.id }), where it.id is the auto-incremented SQLite primary key from Room; explicitly keyed empty-state ('empty_chat_guidance') and busy indicator ('busy_thinking_indicator') with disjoint String keys. (2) TaskListScreen.kt: replaced index-based keying with itemsIndexed(uniqueTasks, key = { _, task -> task.id }), guaranteeing each row is keyed by its unique database primary key; added distinctBy { it.id } to TaskViewModel.tasks. (3) CompletedTasksScreen.kt and UnfinishedTasksScreen.kt: updated to items(uniqueList, key = { it.id }). (4) Removed obsolete TaskKeyUtils.kt."
     },
     {
       "id": "step-70",

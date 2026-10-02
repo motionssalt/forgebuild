@@ -131,12 +131,12 @@ fun CompletedTasksScreen(
                     }
                 }
             } else {
-                val itemKeys = remember(completedList) { TaskKeyUtils.buildUniqueKeys(completedList) }
+                val uniqueCompleted = remember(completedList) { completedList.distinctBy { it.id } }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)
                 ) {
-                    itemsIndexed(completedList, key = { index, _ -> itemKeys.getOrElse(index) { "completed_fallback_$index" } }) { _, task ->
+                    items(uniqueCompleted, key = { it.id }) { task ->
                         CompletedTaskItem(
                             task = task,
                             completedText = task.completedAt?.let { "Completed ${dateFormat.format(Date(it))}" } ?: "Completed",

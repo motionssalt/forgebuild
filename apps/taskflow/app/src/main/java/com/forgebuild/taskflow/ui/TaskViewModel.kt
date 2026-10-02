@@ -98,7 +98,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
                 // touches (incl. overnight spill into the next day and carry-over).
                 else -> days.any { DayAccounting.touchesDay(t, it, now) }
             }
-        }
+        }.distinctBy { it.id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Completed tasks list. */

@@ -132,12 +132,12 @@ fun UnfinishedTasksScreen(
                     }
                 }
             } else {
-                val itemKeys = remember(missedList) { TaskKeyUtils.buildUniqueKeys(missedList) }
+                val uniqueMissed = remember(missedList) { missedList.distinctBy { it.id } }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)
                 ) {
-                    itemsIndexed(missedList, key = { index, _ -> itemKeys.getOrElse(index) { "missed_fallback_$index" } }) { _, task ->
+                    items(uniqueMissed, key = { it.id }) { task ->
                         MissedTaskItem(
                             task = task,
                             whenText = task.fixedTime?.let { "Was due ${dateFormat.format(Date(it))}" } ?: "Missed",

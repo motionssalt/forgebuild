@@ -305,13 +305,13 @@ fun TaskListScreen(
                     }
                 }
             } else {
-                val itemKeys = remember(tasks) { TaskKeyUtils.buildUniqueKeys(tasks) }
+                val uniqueTasks = remember(tasks) { tasks.distinctBy { it.id } }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(SpacingTokens.Spacing.xs)
                 ) {
-                    itemsIndexed(tasks, key = { index, _ -> itemKeys.getOrElse(index) { "task_fallback_$index" } }) { index, task ->
+                    itemsIndexed(uniqueTasks, key = { _, task -> task.id }) { index, task ->
                         val isDragging = dragIndex == index
                         TaskRowItem(
                             task = task,

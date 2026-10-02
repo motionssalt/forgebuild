@@ -323,9 +323,6 @@ fun ChatPanel(
             Spacer(Modifier.height(SpacingTokens.Spacing.sm))
 
             // ── Message list: bubbles spring in as they appear ───────────────
-            val messageKeys = remember(messages) {
-                TaskKeyUtils.buildUniqueMessageKeys(messages.map { it.id })
-            }
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -358,7 +355,7 @@ fun ChatPanel(
                     }
                 }
 
-                itemsIndexed(messages, key = { index, m -> messageKeys.getOrElse(index) { "msg_${m.id}_$index" } }) { _, m ->
+                items(messages, key = { it.id }) { m ->
                     // Spring-based entrance per message (official expressive motion spec).
                     @Suppress("UNCHECKED_CAST")
                     val spatial = MotionTokens.defaultSpatial as
