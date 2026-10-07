@@ -61,7 +61,7 @@ fun ProgressScreen(repo: Repository, onOpenDay: (Int) -> Unit) {
     val cachedPlan = remember { repo.cache.resolvePlan() }
 
     var progress by remember { mutableStateOf(cachedProgress) }
-    var catchupStatus by remember { mutableStateOf(ReadingSession.statusLine(cachedPlan)) }
+    var catchupStatus by remember { mutableStateOf(cachedPlan?.let { ReadingSession.statusLine(it) } ?: "") }
 
     // 2) Background refresh + reconciliation
     LaunchedEffect(Unit) {

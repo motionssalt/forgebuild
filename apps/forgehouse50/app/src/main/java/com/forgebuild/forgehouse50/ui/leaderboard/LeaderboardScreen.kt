@@ -184,15 +184,15 @@ private fun PodiumRow(rank: Int, name: String, avatarId: String?, valueText: Str
         }
     } else baseContainer
     Card(
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-        Modifier.fillMaxWidth().then(
+        modifier = Modifier.fillMaxWidth().then(
             if (rank == 1) Modifier.drawBehind {
                 // subtle warm glow behind first place
                 drawRect(Brush.radialGradient(listOf(accent.copy(alpha = 0.10f), Color.Transparent)))
             } else Modifier
         ),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = container),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (rank == 1) 4.dp else 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (rank == 1) 4.dp else if (rank <= 3) 2.dp else 1.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (rank <= 3) 16.dp else 10.dp),
             verticalAlignment = Alignment.CenterVertically) {
