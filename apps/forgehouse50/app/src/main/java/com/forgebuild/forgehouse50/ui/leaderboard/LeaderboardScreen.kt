@@ -93,29 +93,31 @@ fun LeaderboardScreen(repo: Repository) {
 
 @Composable
 private fun InProgressBoard(repo: Repository) {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("fh50_cache", Context.MODE_PRIVATE) }
     var category by remember { mutableStateOf("overall") }
-    var data by remember { mutableStateOf<LeaderboardResponse?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    // post_testing_polish_v1 ISSUE 3: current user's id so their own row can be
-    // distinguished regardless of rank / category.
-    var myUserId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) { runCatching { myUserId = repo.api.me().id } }
+    val cachedUserId = remember { repo.cache.getMe()?.id }
+    var myUserId by remember { mutableStateOf(cachedUserId) }
+
+    val cachedData = remember(category) { repo.cache.getLeaderboard(category) }
+    var data by remember { mutableStateOf(cachedData) }
+    var loading by remember { mutableStateOf(cachedData == null) }
+
+    LaunchedEffect(Unit) {
+        runCatching { repo.api.me().id }.onSuccess { myUserId = it }
+    }
+
     LaunchedEffect(category) {
-        // scripture_audio_rewire_v1: lb2_ cache key — invalidates any cached
-        // pre-fix leaderboard payload (raw total points, never pts/day).
-        prefs.getString("lb2_$category", null)?.let { c ->
-            runCatching { AppJson.decodeFromString<LeaderboardResponse>(c) }.getOrNull()
-        }?.let { data = it; loading = false }
+        val cached = repo.cache.getLeaderboard(category)
+        if (cached != null) {
+            data = cached
+            loading = false
+        }
         runCatching { repo.api.leaderboard(category) }.onSuccess {
             data = it
-            prefs.edit().putString("lb2_$category", AppJson.encodeToString(LeaderboardResponse.serializer(), it)).apply()
+            repo.cache.saveLeaderboard(category, it)
         }
         loading = false
     }
-
     Column(Modifier.fillMaxSize()) {
         Text("Leaderboard", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
@@ -182,6 +184,7 @@ private fun PodiumRow(rank: Int, name: String, avatarId: String?, valueText: Str
         }
     } else baseContainer
     Card(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
         Modifier.fillMaxWidth().then(
             if (rank == 1) Modifier.drawBehind {
                 // subtle warm glow behind first place

@@ -62,28 +62,24 @@ import com.forgebuild.forgehouse50.ui.ExpressiveButton
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(repo: Repository, onBack: () -> Unit, onEdit: (String?, Int?) -> Unit) {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("fh50_cache", Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
-    var notes by remember { mutableStateOf<List<Note>>(emptyList()) }
+    val cachedNotes = remember { repo.cache.getNotes() }
+    var notes by remember { mutableStateOf(cachedNotes?.notes ?: emptyList()) }
     var query by remember { mutableStateOf("") }
     var typeFilter by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(true) }
+    var loading by remember { mutableStateOf(cachedNotes == null) }
 
     suspend fun refresh() {
         runCatching { repo.api.notes(q = query, type = typeFilter) }.onSuccess {
             notes = it.notes
             if (query.isBlank() && typeFilter.isBlank()) {
-                prefs.edit().putString("notes", AppJson.encodeToString(NotesResponse.serializer(), it)).apply()
+                repo.cache.saveNotes(it)
             }
         }
         loading = false
     }
 
     LaunchedEffect(Unit) {
-        prefs.getString("notes", null)?.let { c ->
-            runCatching { AppJson.decodeFromString<NotesResponse>(c) }.getOrNull()
-        }?.let { notes = it.notes; loading = false }
         refresh()
     }
     LaunchedEffect(query, typeFilter) {
@@ -134,7 +130,9 @@ fun NotesScreen(repo: Repository, onBack: () -> Unit, onEdit: (String?, Int?) ->
                     items(notes, key = { it.id }) { n ->
                         Card(
                             onClick = { onEdit(n.id, n.day_number) },
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                         ) {
                             Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {

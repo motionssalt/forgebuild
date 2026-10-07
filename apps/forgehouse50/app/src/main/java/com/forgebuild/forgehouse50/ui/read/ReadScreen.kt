@@ -82,8 +82,9 @@ fun ReadScreen(
 ) {
     val scope = rememberCoroutineScope()
 
-    var dayData by remember { mutableStateOf<DayResponse?>(null) }
-    var dayLoaded by remember { mutableStateOf(false) }
+    val cachedDay = remember(day) { repo.cache.getDay(day) }
+    var dayData by remember { mutableStateOf(cachedDay) }
+    var dayLoaded by remember { mutableStateOf(cachedDay != null) }
     var translation by remember { mutableStateOf(repo.session.translationId ?: Repository.KJV_ID) }
     var availableTranslations by remember { mutableStateOf<List<String>>(listOf(Repository.KJV_ID)) }
     var passageError by remember { mutableStateOf<String?>(null) }
@@ -91,7 +92,7 @@ fun ReadScreen(
     var selected by remember { mutableIntStateOf(0) }
     var passage by remember { mutableStateOf<PassageResponse?>(null) }
     var loadingPassage by remember { mutableStateOf(false) }
-    var completed by remember { mutableStateOf(false) }
+    var completed by remember { mutableStateOf(cachedDay?.progress?.completed ?: false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Part D: Mark-Complete loading/feedback state.
     var completeBusy by remember { mutableStateOf(false) }
@@ -118,9 +119,10 @@ fun ReadScreen(
         translation = resolved
         repo.session.translationId = resolved
         runCatching { repo.api.day(day) }.onSuccess {
+            repo.cache.saveDay(day, it)
             dayData = it
             completed = it.progress.completed
-        }.onFailure { error = it.message }
+        }.onFailure { if (dayData == null) error = it.message }
         dayLoaded = true
     }
 
@@ -395,7 +397,12 @@ fun ReadScreen(
                                 completeBusy = true
                                 error = null
                                 runCatching { repo.api.completeDay(day) }
-                                    .onSuccess { completed = true }
+                                    .onSuccess {
+                                        completed = true
+                                        dayData?.let { d -> repo.cache.saveDay(day, d.copy(progress = d.progress.copy(completed = true))) }
+                                        repo.refreshProgress()
+                                        repo.refreshToday()
+                                    }
                                     .onFailure { error = it.message ?: "Could not mark this day complete." }
                                 completeBusy = false
                             }

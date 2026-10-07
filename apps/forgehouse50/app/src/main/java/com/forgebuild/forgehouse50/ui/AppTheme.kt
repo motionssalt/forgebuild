@@ -15,55 +15,64 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.forgebuild.forgehouse50.R
 
 /**
- * ForgeHouse 50 app theme — Material 3 Expressive overhaul (session 2026-09-16).
+ * ForgeHouse 50 app theme — Material 3 Expressive.
  *
- * Operator decision (this session, Android-app-only): replace the previous
- * fixed muted-blue accent with Android DYNAMIC COLOR (Material You) wherever
- * the device supports it (API 31+), with the established warm static scheme
- * kept as the fallback for older devices. Light/dark continues to follow the
- * system setting. The web app keeps its own design system — this change is
- * intentionally NOT ported back.
+ * Dynamic Color (Material You, API 31+) with warm static fallback.
  *
- * Typeface: the operator asked for "Google Sans Flex". That font is a
- * proprietary Google brand typeface and is NOT distributed via Google Fonts,
- * so it cannot be bundled legally. Substituted with Nunito (OFL-licensed
- * rounded Google font, bundled as a variable TTF in res/font) — the closest
- * licensable match to the requested rounded/friendly character.
+ * Font Weight & Variable Font Fix (premium_ui_cache_fix_v1):
+ * Nunito is bundled as a variable font (nunito.ttf) whose default master axis
+ * is ExtraLight (wght=200). Registering raw Font() instances without
+ * variationSettings caused Android to render text at 200 weight (the "hairline thin"
+ * bug reported previously). We explicitly bind FontVariation.Settings(FontVariation.weight)
+ * for Normal (400), Medium (500), SemiBold (600), and Bold (700) so the variable font
+ * renders at its true, confident, readable weights. Body text uses Medium/SemiBold (500-600)
+ * throughout the entire app.
  */
-
 private val Nunito = FontFamily(
-    Font(R.font.nunito, FontWeight.Normal),
-    Font(R.font.nunito, FontWeight.Medium),
-    Font(R.font.nunito, FontWeight.SemiBold),
-    Font(R.font.nunito, FontWeight.Bold),
+    Font(
+        resId = R.font.nunito,
+        weight = FontWeight.Normal,
+        variationSettings = FontVariation.Settings(FontVariation.weight(400)),
+    ),
+    Font(
+        resId = R.font.nunito,
+        weight = FontWeight.Medium,
+        variationSettings = FontVariation.Settings(FontVariation.weight(500)),
+    ),
+    Font(
+        resId = R.font.nunito,
+        weight = FontWeight.SemiBold,
+        variationSettings = FontVariation.Settings(FontVariation.weight(600)),
+    ),
+    Font(
+        resId = R.font.nunito,
+        weight = FontWeight.Bold,
+        variationSettings = FontVariation.Settings(FontVariation.weight(700)),
+    ),
 )
 
 private val AppTypography = Typography().run {
     copy(
-        displayLarge = displayLarge.copy(fontFamily = Nunito),
-        displayMedium = displayMedium.copy(fontFamily = Nunito),
-        displaySmall = displaySmall.copy(fontFamily = Nunito),
+        displayLarge = displayLarge.copy(fontFamily = Nunito, fontWeight = FontWeight.Bold),
+        displayMedium = displayMedium.copy(fontFamily = Nunito, fontWeight = FontWeight.Bold),
+        displaySmall = displaySmall.copy(fontFamily = Nunito, fontWeight = FontWeight.Bold),
         headlineLarge = headlineLarge.copy(fontFamily = Nunito, fontWeight = FontWeight.Bold),
         headlineMedium = headlineMedium.copy(fontFamily = Nunito, fontWeight = FontWeight.Bold),
-        headlineSmall = headlineSmall.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
-        titleLarge = titleLarge.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
+        headlineSmall = headlineSmall.copy(fontFamily = Nunito, fontWeight = FontWeight.Bold),
+        titleLarge = titleLarge.copy(fontFamily = Nunito, fontWeight = FontWeight.Bold),
         titleMedium = titleMedium.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
-        titleSmall = titleSmall.copy(fontFamily = Nunito, fontWeight = FontWeight.Medium),
-        // Part E (2026-09-18): raised body weight Regular(400)->Medium(500).
-        // post_testing_polish_v1 ISSUE 1 (2026-09-18): still reported too thin.
-        // Move a FULL further step: body now SemiBold(600) on the Nunito
-        // variable font. ReadScreen verse text uses bodyLarge, so this drives
-        // the primary reading surface. Headings stay Bold so hierarchy holds.
+        titleSmall = titleSmall.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
         bodyLarge = bodyLarge.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp),
-        bodyMedium = bodyMedium.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
-        bodySmall = bodySmall.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
+        bodyMedium = bodyMedium.copy(fontFamily = Nunito, fontWeight = FontWeight.Medium, lineHeight = 20.sp),
+        bodySmall = bodySmall.copy(fontFamily = Nunito, fontWeight = FontWeight.Medium, lineHeight = 16.sp),
         labelLarge = labelLarge.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
-        labelMedium = labelMedium.copy(fontFamily = Nunito, fontWeight = FontWeight.Medium),
+        labelMedium = labelMedium.copy(fontFamily = Nunito, fontWeight = FontWeight.SemiBold),
         labelSmall = labelSmall.copy(fontFamily = Nunito, fontWeight = FontWeight.Medium),
     )
 }
@@ -135,9 +144,7 @@ fun ForgeHouseTheme(
         }
         else -> if (darkTheme) DarkScheme else LightScheme
     }
-    // Material 3 Expressive: official spring-based expressive motion scheme +
-    // expressive shape system, applied on top of the existing dynamic-color +
-    // light/dark behavior (ForgeBuild real-expressive fix; Nunito typeface kept).
+
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),

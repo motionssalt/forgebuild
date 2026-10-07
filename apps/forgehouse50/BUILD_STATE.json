@@ -3,8 +3,8 @@
   "app_name": "ForgeHouse 50",
   "app_folder": "apps/forgehouse50/",
   "description_summary": "Native Android client for the live ForgeHouse 50 web app (forgehouse50.pages.dev, Cloudflare Pages+Workers+D1). Church NT 50-reading-day programme: per-user schedules (Tue/Fri excluded), VerseWell scripture text+audio, notes, one-attempt proportional quiz, points/badges, confidence-weighted leaderboard + final results, admin dashboard, Brevo OTP email auth. Same backend, same API routes as the web app at github.com/vjumbo264/forgehouse50.",
-  "build_complete": true,
-  "last_updated_utc": "2026-09-27T07:30:00Z",
+  "build_complete": false,
+  "last_updated_utc": "2026-10-07T23:19:00Z",
   "backend": {
     "base_url": "https://forgehouse50.pages.dev",
     "api_prefix": "/api",
@@ -344,6 +344,12 @@
       "date": "2026-09-18",
       "did": "post_testing_polish_v1 shipped: forgehouse50-v12 built (CI run 35309797557, success) and verified live on the GitHub Releases API (APK 8,624,185 bytes + manifest, non-draft). build_complete=true. All six code fixes verified at source level; per-issue on-device screenshot/recording verification remains the operator-side step (no emulator in the build sandbox) \u2014 each task note records exactly what to look at on device.",
       "next": "Operator installs app-forgehouse50-v12.apk and runs the six on-device checks recorded in post_testing_polish_v1 tasks p1-p6 (font comfort, spinner contrast light+dark, You row on leaderboard, footnote tap at e.g. Matthew 1, chapter-nav icons + no squiggle, themed-icons ON/OFF icon silhouette)."
+    },
+    {
+      "session": 13,
+      "date": "2026-10-07",
+      "did": "premium_ui_cache_fix_v1: (1) Audited and solved stale/zero UI snapping with centralized synchronous LocalCacheStore across all screens; (2) Fixed Nunito variable font hairline weight bug with FontVariation.Settings(FontVariation.weight); (3) Redesigned HomeScreen with elevated stat cards, prominent numerals, pill CTA, and action rows; (4) Applied elevated card styling app-wide to Progress, Leaderboard, Profile, and Notes; (5) Redesigned home-screen widget with Material 3 styling (28dp corners, pill badges, sleek progress, action buttons); (6) Replaced monochrome adaptive-icon layer with clean forgehouse50-icon-silhouette-v2 mark across all densities.",
+      "next": "Dispatch release.yml (app_path=apps/forgehouse50) -> forgehouse50-v14, verify release live on GitHub Releases API, and set build_complete=true."
     }
   ],
   "combined_fixes_v1": {
@@ -1056,6 +1062,63 @@
         "name": "cw11-ondevice-verification",
         "status": "pending",
         "notes": "Requires a physical/emulated device (not available in this CI sandbox). Operator verification steps: (1) Home/Profile -> 'Join ForgeHouse WhatsApp Group' opens the group invite; 'Support ForgeHouse Global' opens a WhatsApp chat to +234 913 909 5481 ready to send. (2) Miss 2 days: admin un-completes 2 elapsed days on a test account -> Home shows 'Catch up: days A + B' -> ReadSessionScreen paginates both days, per-day Finish gated until all chapters viewed, per-day quiz, progress updates each day. (3) Backlog > remaining days -> Progress shows the honest 'You need N more days...' status with no block. (4) Long-press home -> Widgets -> ForgeHouse 50: Day x/50, assignment, verse, X/260 bar; Start->Continue->Completed(+Reflect) as state changes; taps open the right screen. (5) Icon renders correctly with themed icons ON and OFF."
+      }
+    ]
+  },
+  "current_task": "t8-validate-and-release-v14",
+  "premium_ui_cache_fix_v1": {
+    "status": "implemented",
+    "target_release": "forgehouse50-v14",
+    "base_source": "forgehouse50-v13 (current main)",
+    "scope_note": "Premium visual pass, critical cache-first fix app-wide + widget, widget Material 3 redesign, icon silhouette swap.",
+    "tasks": [
+      {
+        "id": "t1-cache-audit-diagnosis",
+        "status": "done",
+        "title": "ISSUE 1: Audit and diagnose root cause of stale/zero/null flashing across all screens and widget",
+        "notes": "DONE: Audited data flow across Home, Progress, Leaderboard, Profile, Notes, Read, ReadSession, Quiz, Admin, and Widget. Root causes identified: (1) Jetpack Compose screens initialized state with mutableStateOf(null) and only fetched or read prefs inside LaunchedEffect (which runs after frame 1 composition), causing initial frame to display zero points, 0/50 days, 0 streak, and default buttons; (2) SharedPreferences caching was patchy and uncoordinated \u2014 me profile, notes count, day details, and plan were not cached for synchronous access; (3) WidgetRefreshWorker wiped out valid widget state on network failures by writing default blank State(day=0); (4) HomeScreen background refresh never pushed fresh snapshots directly into WidgetStateStore. Resolution: centralized LocalCacheStore with synchronous in-memory/SharedPreferences getters called directly during composition before frame 1 renders, plus bidirectional widget synchronization."
+      },
+      {
+        "id": "t2-cache-first-implementation",
+        "status": "done",
+        "title": "ISSUE 1: Implement synchronous LocalCacheStore and hydrate all screens + widget immediately on frame 1",
+        "notes": "DONE: Built LocalCacheStore (com.forgebuild.forgehouse50.data.local.LocalCacheStore) providing synchronous getToday(), getMe(), getProgress(), getDay(d), getNotes(), getLeaderboard(cat), getQuiz(d), getAdminStats(), getAdminProgramme(), getAdminParticipants(), and resolvePlan(). Integrated into Repository as repo.cache. Updated HomeScreen, ProgressScreen, LeaderboardScreen, ProfileScreen, NotesScreens, ReadScreen, ReadSessionScreen, QuizScreen, and AdminScreen to initialize state directly from cache on frame 1. Background refresh persists updates and smoothly reconciles. WidgetRefreshWorker falls back to LocalCacheStore on network error and never overwrites with blank defaults; LocalCacheStore.syncWidget() immediately updates WidgetStateStore whenever app refreshes data."
+      },
+      {
+        "id": "t3-font-weight-variation-fix",
+        "status": "done",
+        "title": "ISSUE 2: Fix Nunito variable font hairline weight with explicit FontVariation.Settings",
+        "notes": "DONE: Root-caused hairline thin body font reported twice: Nunito variable font TTF (nunito.ttf) has ExtraLight (wght=200) as its default master axis. Without explicit variation settings, Android font loader fell back to the 200 default master regardless of Compose FontWeight. Fixed in ui/AppTheme.kt by binding FontVariation.Settings(FontVariation.weight(w)) for Normal (400), Medium (500), SemiBold (600), and Bold (700) and configuring AppTypography across all 15 M3 roles (bodyLarge SemiBold 600, bodyMedium/bodySmall Medium 500, titles/headlines SemiBold/Bold). Body text is now deeply legible, confident, and premium."
+      },
+      {
+        "id": "t4-home-screen-premium-pass",
+        "status": "done",
+        "title": "ISSUE 2: Redesign HomeScreen with elevated stat cards, prominent numerals, pill CTA, and action rows",
+        "notes": "DONE: Redesigned ui/home/HomeScreen.kt matching mood/structure of the operator reference mockup within Material 3 Expressive dynamic theming: (1) Stat cards strip with soft elevation (2dp, surfaceContainerLow, RoundedCornerShape 22dp), prominent bold large numerals ('641', '6 / 50', '6') as focal points, circular icon badges (Star, Calendar, Flame), and small labels beneath; (2) Elevated reading card (RoundedCornerShape 26dp) with prominent reading assignment headline, chapter/time subtitle, pill CTA button ('Catch up: days 7 + 8 >' with trailing chevron or Continue/Start reading), and catch-up explanation; (3) Clean full-width pill action rows (RoundedCornerShape 24dp) with leading icon in soft circular chip, label, and trailing chevron for 'My notes', 'Join ForgeHouse WhatsApp Group', 'Support ForgeHouse Global', and Admin Dashboard."
+      },
+      {
+        "id": "t5-appwide-screens-premium-pass",
+        "status": "done",
+        "title": "ISSUE 2: Apply elevated cards, generous corner radii, and pill rows across Progress, Leaderboard, Profile, and Notes",
+        "notes": "DONE: Extended premium visual discipline app-wide: (1) ProgressScreen: elevated 24dp summary card with bold stats and percent pill, elevated 18dp day list cards with completion status; (2) LeaderboardScreen: 18dp rounded podium cards with gold/silver/bronze medals and subtle radial glow, distinct 'You' chip for current user, instantaneous cache render; (3) ProfileScreen: 22dp rounded user info card, 22dp stats card with bold numbers; (4) NotesScreens: 18dp rounded note cards with soft elevation."
+      },
+      {
+        "id": "t6-widget-redesign",
+        "status": "done",
+        "title": "ISSUE 3: Redesign home-screen widget with Material 3 styling, 28dp corners, and cache-first sync",
+        "notes": "DONE: Redesigned res/layout/forgehouse_widget.xml and res/drawable/widget_bg.xml to meet modern Material 3 widget guidelines: 28dp rounded container radius, top header row with brand text and Day status pill badge (widget_pill_bg.xml), bold assignment headline, italic verse snippet, sleek progress bar with chapters text, and bottom action bar with rounded pill buttons (widget_btn_primary.xml, widget_btn_secondary.xml). Connected to LocalCacheStore.syncWidget() and failsafe WidgetRefreshWorker so widget never flashes blank defaults."
+      },
+      {
+        "id": "t7-themed-icon-silhouette",
+        "status": "done",
+        "title": "ISSUE 4: Replace adaptive icon monochrome layer with clean forgehouse50-icon-silhouette-v2 mark",
+        "notes": "DONE: Generated razor-sharp monochrome adaptive-icon layer from the new operator-attached forgehouse50-icon-silhouette-v2 mark. Rendered via high-precision vector SVG with resvg across all 5 densities (mdpi 108px, hdpi 162px, xhdpi 216px, xxhdpi 324px, xxxhdpi 432px) centered in the 72dp safe zone. Alpha channel defines the pristine glyph (globe circle with orbital arc, house with flame and square window, bold 50, and open book at base). Referenced in mipmap-anydpi-v26/ic_launcher.xml and ic_launcher_round.xml; standard foreground/background layers preserved."
+      },
+      {
+        "id": "t8-validate-and-release-v14",
+        "status": "pending",
+        "title": "Dispatch release.yml -> forgehouse50-v14, verify live on Releases API, set build_complete: true",
+        "notes": ""
       }
     ]
   }

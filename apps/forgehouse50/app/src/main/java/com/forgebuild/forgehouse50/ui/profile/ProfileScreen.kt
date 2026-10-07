@@ -66,7 +66,8 @@ private val AVATAR_IDS = AvatarAssets.IDS
 fun ProfileScreen(repo: Repository, onSignedOut: () -> Unit, onManageTranslations: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var me by remember { mutableStateOf<MeResponse?>(null) }
+    val cachedMe = remember { repo.cache.getMe() }
+    var me by remember { mutableStateOf(cachedMe) }
     var pickingAvatar by remember { mutableStateOf(false) }
     var translations by remember { mutableStateOf<List<DownloadedTranslation>>(emptyList()) }
     var totalBytes by remember { mutableStateOf(0L) }
@@ -77,7 +78,8 @@ fun ProfileScreen(repo: Repository, onSignedOut: () -> Unit, onManageTranslation
     }
 
     LaunchedEffect(Unit) {
-        runCatching { repo.api.me() }.onSuccess { me = it }
+        val fresh = repo.refreshMe()
+        if (fresh != null) me = fresh
         refreshTranslations()
     }
 
@@ -102,7 +104,7 @@ fun ProfileScreen(repo: Repository, onSignedOut: () -> Unit, onManageTranslation
         }
         Spacer(Modifier.height(16.dp))
         val s = me?.stats
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Card(shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("${s?.points ?: 0} points · ${s?.days_completed ?: 0} days · ${s?.chapters ?: 0} chapters",
                     style = MaterialTheme.typography.titleSmall)

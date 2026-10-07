@@ -63,12 +63,12 @@ class ForgeHouseWidgetProvider : AppWidgetProvider() {
             v.setTextViewText(
                 R.id.w_day,
                 when {
-                    !s.loggedIn -> "Sign in to see today"
-                    s.day > 0 -> "Day ${s.day}/${s.totalDays}" + if (s.catchup) " · catch-up" else ""
-                    else -> "No reading due today"
+                    !s.loggedIn -> "Sign in"
+                    s.day > 0 -> "Day ${s.day} of ${s.totalDays}" + if (s.catchup) " · Catch-up" else ""
+                    else -> "Rest day"
                 },
             )
-            v.setTextViewText(R.id.w_assignment, s.assignment.ifBlank { "" })
+            v.setTextViewText(R.id.w_assignment, s.assignment.ifBlank { "Reading plan" })
             v.setTextViewText(
                 R.id.w_verse,
                 if (s.verse.isBlank()) "" else "\u201C${s.verse}\u201D",
@@ -77,7 +77,7 @@ class ForgeHouseWidgetProvider : AppWidgetProvider() {
             val pct = if (s.chaptersTotal > 0)
                 ((s.chaptersDone * 100) / s.chaptersTotal).coerceIn(0, 100) else 0
             v.setProgressBar(R.id.w_progress, 100, pct, false)
-            v.setTextViewText(R.id.w_progress_text, "${s.chaptersDone}/${s.chaptersTotal} chapters")
+            v.setTextViewText(R.id.w_progress_text, "${s.chaptersDone}/${s.chaptersTotal} chapters (${pct}%)")
 
             when {
                 !s.loggedIn || s.day <= 0 -> {

@@ -59,18 +59,21 @@ import com.forgebuild.forgehouse50.ui.ExpressiveButton
 fun AdminScreen(repo: Repository, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var tab by remember { mutableStateOf(0) }
-    var stats by remember { mutableStateOf<AdminStats?>(null) }
-    var programme by remember { mutableStateOf<AdminProgramme?>(null) }
-    var participants by remember { mutableStateOf<List<Participant>>(emptyList()) }
+    val cachedStats = remember { repo.cache.getAdminStats() }
+    var stats by remember { mutableStateOf(cachedStats) }
+    val cachedProgramme = remember { repo.cache.getAdminProgramme() }
+    var programme by remember { mutableStateOf(cachedProgramme) }
+    val cachedParticipants = remember { repo.cache.getAdminParticipants() }
+    var participants by remember { mutableStateOf(cachedParticipants) }
     var message by remember { mutableStateOf<String?>(null) }
     var adjustTarget by remember { mutableStateOf<Participant?>(null) }
     var confirmStart by remember { mutableStateOf(false) }
     var confirmEndTesting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        runCatching { repo.api.adminStats() }.onSuccess { stats = it }
-        runCatching { repo.api.adminProgramme() }.onSuccess { programme = it }
-        runCatching { repo.api.adminParticipants() }.onSuccess { participants = it.participants }
+        runCatching { repo.api.adminStats() }.onSuccess { repo.cache.saveAdminStats(it); stats = it }
+        runCatching { repo.api.adminProgramme() }.onSuccess { repo.cache.saveAdminProgramme(it); programme = it }
+        runCatching { repo.api.adminParticipants() }.onSuccess { repo.cache.saveAdminParticipants(it.participants); participants = it.participants }
     }
 
     Scaffold(topBar = {

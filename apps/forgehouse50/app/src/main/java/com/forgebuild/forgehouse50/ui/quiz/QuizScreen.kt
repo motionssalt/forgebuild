@@ -67,11 +67,12 @@ fun QuizScreen(
     onHome: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    var quiz by remember { mutableStateOf<QuizResponse?>(null) }
+    val cachedQuiz = remember(day) { repo.cache.getQuiz(day) }
+    var quiz by remember { mutableStateOf(cachedQuiz) }
     var result by remember { mutableStateOf<QuizSubmitResponse?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(true) }
+    var loading by remember { mutableStateOf(cachedQuiz == null) }
     var showConfetti by remember { mutableStateOf(false) }
     var readingCompleted by remember { mutableStateOf(false) }
     val answers = remember { mutableStateMapOf<Int, Int>() }
@@ -85,10 +86,18 @@ fun QuizScreen(
     }
 
     LaunchedEffect(day) {
-        runCatching { repo.api.day(day) }.onSuccess { readingCompleted = it.progress.completed }
+        val cachedDay = repo.cache.getDay(day)
+        if (cachedDay != null) readingCompleted = cachedDay.progress.completed
+        runCatching { repo.api.day(day) }.onSuccess {
+            repo.cache.saveDay(day, it)
+            readingCompleted = it.progress.completed
+        }
         runCatching { repo.api.quiz(day) }
-            .onSuccess { quiz = it }
-            .onFailure { error = it.message }
+            .onSuccess {
+                repo.cache.saveQuiz(day, it)
+                quiz = it
+            }
+            .onFailure { if (quiz == null) error = it.message }
         loading = false
     }
 

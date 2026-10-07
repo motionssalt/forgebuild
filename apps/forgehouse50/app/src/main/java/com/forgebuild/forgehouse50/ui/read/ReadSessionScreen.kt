@@ -73,12 +73,15 @@ fun ReadSessionScreen(
     val scope = rememberCoroutineScope()
     val sessionDays = remember(days) { days.distinct().sorted().take(2) }
 
-    var dayData by remember { mutableStateOf<Map<Int, DayResponse>>(emptyMap()) }
-    var loaded by remember { mutableStateOf(false) }
+    val initialCached = remember(sessionDays) {
+        sessionDays.mapNotNull { d -> repo.cache.getDay(d)?.let { d to it } }.toMap()
+    }
+    var dayData by remember { mutableStateOf<Map<Int, DayResponse>>(initialCached) }
+    var loaded by remember { mutableStateOf(initialCached.isNotEmpty()) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var translation by remember { mutableStateOf(repo.session.translationId ?: Repository.KJV_ID) }
     var availableTranslations by remember { mutableStateOf<List<String>>(listOf(Repository.KJV_ID)) }
-    var completedDays by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var completedDays by remember { mutableStateOf(initialCached.filterValues { it.progress.completed }.keys.toSet()) }
     var completeBusyDay by remember { mutableStateOf<Int?>(null) }
     var activeIdx by remember { mutableIntStateOf(0) }
 
@@ -94,8 +97,17 @@ fun ReadSessionScreen(
         val done = mutableSetOf<Int>()
         var failed: String? = null
         for (d in sessionDays) {
+            val cached = repo.cache.getDay(d)
+            if (cached != null) {
+                map[d] = cached
+                if (cached.progress.completed) done.add(d)
+            }
             runCatching { repo.api.day(d) }
-                .onSuccess { map[d] = it; if (it.progress.completed) done.add(d) }
+                .onSuccess {
+                    repo.cache.saveDay(d, it)
+                    map[d] = it
+                    if (it.progress.completed) done.add(d)
+                }
                 .onFailure { failed = it.message }
         }
         dayData = map

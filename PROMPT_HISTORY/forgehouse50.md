@@ -269,3 +269,33 @@ correction session. Refinement, not a full correction.
 - ISSUE 5 — Reapply the app icon from the operator-supplied source image:
   full adaptive set (background, foreground, monochrome themed layer per the
   established pattern) plus legacy fallback; verify themed icons on and off.
+
+
+---
+
+## 2026-10-07 — EXTEND / UPDATE: ForgeHouse 50 Android App — Premium Visual Pass, Critical Cache-First Fix, Widget Redesign, Icon Silhouette Swap
+(Credential values redacted per contract; never committed.)
+
+Scope:
+Four issues, one of which (cache-first/stale-UI) is a correctness bug, not a visual preference, and should be treated with proportionate urgency.
+
+- ISSUE 1 — CRITICAL: APP (AND WIDGET) SHOW STALE/DEFAULT DATA BEFORE SNAPPING TO REAL DATA:
+  Root cause analysis and fix: screens and widget initially render default/placeholder/zeroed values (e.g. not showing catch-up status, not showing real points/streak/day numbers, buttons appearing in default state), and only update once network request completes.
+  Every screen (Home, Read, Notes, Progress, Leaderboard, Profile, admin, quiz) and the widget must render using the most recently known local data immediately, with zero visible default/placeholder/zero flash, the instant the app or widget is opened — even with zero network connectivity. Background network refresh updates local data and reconciles smoothly without visible snap.
+
+- ISSUE 2 — PREMIUM VISUAL PASS (HOME SCREEN AND APP-WIDE), REAL FONT FIX:
+  Elevate visual quality matching the confidence/premium feel of the mockup reference:
+  - Cards and containers: soft shadow/elevation, generous corner radii (Material 3 Expressive shape system) on stat cards, info panels, list rows.
+  - Typography for key numbers: bold, large numerals as dominant visual element of stat cards ("641", "6/50", "6"), smaller label beneath.
+  - Action rows: clean full-width pill-shaped rows with leading icon in soft circular/rounded chip, label, trailing chevron.
+  - Apply consistently app-wide (Progress, Leaderboard, Profile, Notes, etc.).
+  - Font weight fix: resolve the hairline-thin body text by properly configuring font variation weight (Medium 500 / SemiBold 600 / Bold 700) so typography is genuinely readable and confident.
+
+- ISSUE 3 — WIDGET VISUAL REDESIGN (CLEAN, MATERIAL-STYLE):
+  Redesign home-screen widget to look like a polished Google/Material-style widget:
+  - Material 3 widget styling: 28dp corner radius, dynamic colors / GlanceTheme, clear visual hierarchy.
+  - Clean top section for day/progress pill, middle section for reading assignment & verse snippet, bottom action bar with pill buttons.
+  - Sync with cache-first fix so widget never shows stale/default placeholder.
+
+- ISSUE 4 — REPLACE THEMED-ICON SILHOUETTE WITH NEW ATTACHED VERSION:
+  Use forgehouse50-icon-silhouette-v2 as the source for the adaptive icon monochrome/themed-icon layer specifically across mdpi..xxxhdpi inside the 72dp safe zone.

@@ -25,13 +25,36 @@ import java.util.zip.GZIPInputStream
  *
  * ISSUE 3: all chapter-audio handling is removed (audio removed upstream).
  */
+import com.forgebuild.forgehouse50.data.local.LocalCacheStore
+
 class Repository(
     private val appContext: Context,
     val session: SessionStore,
 ) {
     val api = ApiClient(session)
+    val cache = LocalCacheStore(appContext)
     private val db = AppDatabase.get(appContext)
     private val json = Json { ignoreUnknownKeys = true }
+
+    suspend fun refreshToday(): TodayResponse? = runCatching {
+        val fresh = api.today()
+        cache.saveToday(fresh)
+        fresh
+    }.getOrNull()
+
+    suspend fun refreshMe(): MeResponse? = runCatching {
+        val fresh = api.me()
+        session.userRole = fresh.role
+        session.userName = fresh.name
+        cache.saveMe(fresh)
+        fresh
+    }.getOrNull()
+
+    suspend fun refreshProgress(): ProgressResponse? = runCatching {
+        val fresh = api.progress()
+        cache.saveProgress(fresh)
+        fresh
+    }.getOrNull()
 
     companion object {
         const val KJV_ID = "versewell-kjv"
